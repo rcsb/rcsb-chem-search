@@ -1,0 +1,45 @@
+# SPDX-FileCopyrightText: Copyright 2020-2024, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+
+name: "🐛 Bug"
+description: "Bug report"
+labels:
+  - "type: bug"
+  - "state: awaiting triage"
+
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      placeholder: Detail what you did and what happened.
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: What OS types are you seeing the problem on?
+      multiple: true
+      options:
+        - Windows
+        - Linux
+        - macOS
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: What browsers are you seeing the problem on?
+      multiple: true
+      options:
+        - Chrome
+        - Firefox
+        - Edge
+        - Safari
+        - Opera
+        - Samsung Internet
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant log output
+      description: Please copy and paste any relevant log output.
+      render: shell

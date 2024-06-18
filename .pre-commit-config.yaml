@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: Copyright 2020-2024, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+#
+# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
+# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Adapted from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
+
+# Check out https://pre-commit.com/ for documentation
+minimum_pre_commit_version: 3.7.0
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-shebang-scripts-are-executable
+      - id: check-symlinks
+      - id: end-of-file-fixer
+      - id: fix-byte-order-marker
+      - id: fix-encoding-pragma
+        args:
+          - '--remove'
+      - id: trailing-whitespace
+
+  # --- Strip output from .ipynb files ---
+  - repo: https://github.com/kynan/nbstripout
+    rev: 0.7.1
+    hooks:
+      - id: nbstripout
+
+  # --- Linters ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.5
+    hooks:
+      - id: ruff
+        args:
+          -  '--fix-only'
+        types_or:
+          - python
+          - pypirc
+          - jupyter
+          - markdown
+      - id: ruff-format

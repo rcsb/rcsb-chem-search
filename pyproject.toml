@@ -1,0 +1,396 @@
+# SPDX-FileCopyrightText: Copyright 2020-2024, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+#
+# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
+# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Adapted from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
+#
+###########################################################
+#                     [build-system]
+###########################################################
+
+[build-system]
+build-backend = "hatchling.build"
+requires = ["hatchling~=1.25.0"]
+
+#
+###########################################################
+#                       [project]
+###########################################################
+
+[project]
+name = "rcsbchemsearch"
+version = "0.0.1-alpha0"
+requires-python = "~=3.12"
+# 'readme' |--> 'description' in importlib.metadata
+readme = { file = "README.md", content-type = "text/markdown" }
+# 'description' |--> 'summary' in importlib.metadata
+description = "CI/CD test repo"
+maintainers = [
+  { name = "Douglas Myers-Turnbull", email = " dmyersturnbull@gmail.com" }
+]
+authors = [
+  { name = "Douglas Myers-Turnbull", email = " dmyersturnbull@gmail.com" }
+]
+keywords = ["python", "ci", "cd"]
+# The Python Packaging Authority has contradictory recommendations for specifying the license:
+# - If the license is well-known, add a Trove classifier and omit `project.license`.
+# - If you do that, tools like pip won't know what the license is.
+# - PEP 639, which is actively developed but not targeted for a release,
+#   deprecates the Trove classifiers in favor of `project.license` as an SPDX expression:
+#   license = "Apache-2.0"
+#   license-files = ["LICENSE.txt", "3rd-party-notices/**/*.txt"]
+#   The former maps to the core metadata `License-Expression`, now a string.
+#   Unfortunately, following that now breaks everything.
+# note: PyPI is required to error if License-Expression and a Trove license classifier are present.
+# see: https://peps.python.org/pep-0639/#deprecate-license-classifiers
+# see: https://discuss.python.org/t/pep-639-round-3-improving-license-clarity-with-better-package-metadata/53020
+# see: https://github.com/python/peps/pull/3866
+
+# which maps to License-Expression
+license = { text = "BSD-3-Clause" }
+classifiers = [
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3 :: Only",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Environment :: Console",
+  "Topic :: Software Development :: Build Tools",
+  "License :: OSI Approved :: Apache Software License",
+]
+dependencies = [
+  "regex >=2024.7",
+  "loguru >=0.7",
+  "orjson >=3.10",
+  "pydantic >=2.8",
+  "fastapi >=0.111",
+  "starlette-compress >=1.0",
+  "pymongo >=4.8",
+  "rdkit >=2024.3",
+  "polars[pyarrow] >=1.4",
+  "tzdata >=2024",
+]
+
+#
+#=============== URLs ===============#
+#
+[project.urls]
+# :tyranno: "https://github.com/${.frag}"
+Homepage = "https://github.com/rcsb/py-rcsbchemsearch"
+# :tyranno: "https://github.com/${.frag}"
+Source = "https://github.com/rcsb/py-rcsbchemsearch"
+# :tyranno: Documentation = https://${.vendor}.github.io/${project.name}
+Documentation = "https://rcsb.github.io/rcsbchemsearch"
+# :tyranno: "Issue Tracker" = ${.home}/issues
+Tracker = "https://github.com/rcsb/py-rcsbchemsearch/issues"
+# :tyranno: Download = "https://pypi.org/project/${project.name}"
+Download = "https://pypi.org/project/rcsbchemsearch/"
+# :tyranno: "Release Notes" = "https://github.com/${.frag}/releases"
+"Release Notes" = "https://github.com/rcsb/py-rcsbchemsearch/releases"
+
+#
+###########################################################
+#                     [tool.hatch]
+###########################################################
+
+[tool.hatch.envs.default]
+  dependencies = [
+    "pre-commit >=3.8",
+    "pytest >=8.2",
+    "coverage[toml] >=7.6",
+    "pytest-cov >=5.0",
+    "mypy >=1.10",
+    "ruff >=0.5.5",
+]
+
+#
+#=============== Hatch scripts ===============#
+#
+#skip-install = true
+[tool.hatch.envs.default.scripts]
+# 'test' uses args in [tool.pytest] section (you can pass more)
+test = "pytest {args}"
+# 'format' formats and fixes issues but does not complain
+format = [
+  "ruff format",
+  "ruff check --fix-only",
+]
+# 'check' only checks but never fixes
+check = [
+  "ruff check --no-fix .",
+  "mypy --non-interactive src tests
+]
+# only checks with ruff (mypy has a lot of false positives)
+check-ruff = "ruff check --no-fix . {args}"
+# to complement 'check-ruff'
+check-mypy = "mypy --non-interactive src tests {args}"
+# only check security via Bandit; we require these rules to pass
+check-security = "ruff check --select S --no-fix ."
+
+#
+###########################################################
+#                       [tool.ruff]
+###########################################################
+
+[tool.ruff]
+line-length = 120 # 120 is hatch's default via 'hatch init'
+include = [
+  "*.py", # Source
+  "pyproject.toml", # This file (RUF rules only)
+  "*.ipynb" # Jupyter notebooks
+]
+
+[tool.ruff.lint]
+
+preview = true
+explicit-preview-rules = true
+select = [
+  "A", # flake8-builtins
+  #"AIR", # Airflow //DISABLED: enable if using airflow//
+  "ANN", # flake8-annotations
+  #"ARG", # flake8-unused-args //DISABLED: correct in overrides//
+  "ASYNC", # flake8-async
+  "B", # flake8-bugbear
+  #"BLE", # flake8-blind-exception (try: * except: only) //DISABLED: covered by E722 (?)//
+  "C", # flake8-comprehensions
+  "C4", # flake8-comprehensions
+  #"C90", # mmcabe //DISABLED: useful but thin-lined and time-intensive//
+  #"COM", # flake8-commas //DISABLED: handled by formatter//
+  #"CPY", # flake8-copyright //DISABLED: handle carefully instead; also unmaintained//
+  "D", # pydocstyle
+  #"DJ", # flake8-django //DISABLED: enable if using Django//
+  "DTZ", # flake8-datetimez
+  #"E", # pycodestyle ERRORs //DISABLED: almost all handled by formatter//
+  "E502", # redundant backslash
+  "E71", # == None, != False, not in, not is, etc.
+  "E72", # bare except
+  "E73", # lambda assignment
+  "E74", # easily confused characters in names
+  "E9", # can't lint -- syntax error, etc.
+  "EM", # flake8-errmsg
+  #"ERA", # eradicate (commented-out code) //DISABLED: catches code in comments, etc.//
+  #"EXE", # flake8-executable //DISABLED: pre-commit shebang rules instead//
+  "F", # pyflakes
+  "FA", # flake8-future-annotations
+  #"FBT", # flake8-boolean-trap //DISABLED: debatable and sometimes unavoidable//
+  #"FIX", # flake8-fix*me //DISABLED: bans TO*DO, etc. and not configurable//
+  "FLY", # flynt (https://pypi.org/project/flynt/; updates .format)
+  "FURB", # refurb (misc., mostly fixable)
+  #"E", # flake8 errors //DISABLED: handled by formatter or nitpicky//
+  "G", # flake8-logging-format
+  #"I", # isort //DISABLED: handled by formatter//
+  #"ICN", # flake8-import-conventionals //DISABLED: handled by formatter//
+  "INP", # flake8-no-pep420 (require __init__.py to import)
+  "INT", # flake8-gettext (i18n)
+  "ISC", # flake8-implicit-str-concat
+  "LOG", # flake8-logging
+  "N", # pep8-naming
+  #"NPY", # numpy-specific rules //DISABLED: enable if using numpy//
+  #"PD",  # pandas-vet //DISABLED: enable if using pandas//
+  "PERF", # perflint
+  "PGH", # pygrep-hooks
+  "PIE", # flake8-pie (misc. lint rules)
+  "PL", # pylint
+  "PT", # flake8-pytest-style
+  "PTH", # flake8-use-pathlib
+  #"PYI", # flake8-pyi (rules for stub files) //DISABLED: auto-generate stub files//
+  #"Q", # flake8-quotes //DISABLED: handled by formatter//
+  #"RSE", # flake8-raise //DISABLED: handled by formatter//
+  "RET", # flake8-return (fixable)
+  "RUF", # Ruff-specific tests
+  "S", # bandit
+  "SIM", # flake8-simplify
+  "SLF", # flake8-self (private access)
+  "SLOT", # flake8-slots
+  "T10", # flake8-debugger (bans debugger)
+  "T20", # flake8-print (bands print and pprint)
+  "TD", # flake8-to*do (mandates syntax; note: use 'to-do' in prose)
+  "TCH", # flake8-type-checking
+  "TID", # flake8-tidy-imports (bans relative imports)
+  "TRY", # tryceratops (try-except-raise)
+  "UP", # pyupgrade
+  #"W", # warnings //DISABLED: most fixed by formatter//
+  "W60", # E605 invalid escape character
+  "YTT", # flake8-2020 (incorrect Python vr checks)
+  "RUF" # Ruff-specific rules
+]
+ignore = [
+  "COM812", # contradicts Ruff formatter
+  "D107", # missing docstring in __init__ (put in class docstring)
+  "D212", # multi-line docstring start (contradictory)
+  "E203", # clons with space before (sometimes useful expand)
+  "E225", # missing whitespace around operator (sometimes useful to condense)
+  "E501", # line > 79 chars (we use Ruff's formatter)
+  "INP001", # missing __init__ -- false positives
+  "ISC001", # contradicts Ruff formatter
+  "PLR0912", # too many branches
+  "PLR1711", # return None at end
+  "PLR0916", # too many boolean expressions
+  "PLR2044", # line with empty comment
+  "PLR6301", # 'self' not used -- correct for overrides etc.; and required in
+]
+unfixable = [
+  "F601", # repeated key in dict {}
+  "F602", # repeated key in dict()
+  "F811", # unused and redefined
+  "F841", # unused variable
+  "PGH004", # blanketed noqa
+  "PLE2510", # invalid unescaped characters
+  "RUF100", # unused noqa
+  "SIM112", # uncapitalized env var
+  "TD006", # 'to*do' -> 'TO*DO'
+  "W605", # invalid escape sequence
+]
+flake8-bandit.check-typed-exception = true
+pydocstyle.convention = "google"
+flake8-tidy-imports.ban-relative-imports = "all"
+
+[tool.ruff.lint.pylint]
+max-nested-blocks = 3 # default is 5
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = [
+  "INP001", # missing __init__
+  "PLR2004", # magic value
+  "S101", # assert
+  "TID252", # relative import
+  "S105", # possible password
+  "S106",
+  "S107",
+  "S108", # harcoded temp file
+]
+
+#
+###########################################################
+#                      [tool.pytest]
+###########################################################
+
+# A future version of pytest will create [tool.pytest]
+[tool.pytest.ini_options]
+pythonpath = "./src" # critical!
+# coverage stops recursing after it finds one dir without an __init__.py
+# so if it finds src/java-app before src/pyapp, it won't find pyapp
+# So specify exactly which directories to test
+# :tyranno: addopts = """
+# :tyranno:   --cov=src/${project.name}
+# :tyranno:   --cov-report json:coverage.json \
+# :tyranno:   --cov-report term \
+# :tyranno:   --cov-config=pyproject.toml \
+# :tyranno:   tests/
+# :tyranno: """
+addopts = """
+  --cov=src/rcsbchemsearch \
+  --cov-report json:coverage.json \
+  --cov-report term \
+  --cov-config=pyproject.toml \
+  tests/
+"""
+# show log output from the tests
+# in the tests/ code, name the logger {pkg}-TEST to differentiate
+log_cli = true
+log_cli_level = "INFO"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+# create markers so we can disable integration, network-connected, or very slow tests if desired
+markers = [
+  "integration: marks integration tests (deselect with '-m \"not integration\"')",
+  "network: marks tests that require network access (deselect with '-m \"not network\"')"
+]
+doctest_optionflags = [
+  "DONT_ACCEPT_TRUE_FOR_1", # 1 is not the same as True
+  "NORMALIZE_WHITESPACE", # allows us to wrap expected output to 120 lines (ignores newlines)
+]
+
+#
+###########################################################
+#                    [tool.coverage]
+###########################################################
+
+[tool.coverage.run]
+data_file = "coverage.json"
+branch = true # quantify % coverage of execution branches
+parallel = true # note that pytest-cov overrides this
+# :tyranno: source_pkgs = ["src/${project.name}"]
+source_pkgs = ["rcsbchemsearch"]
+omit = ["src/**/__main__.py"]
+
+[tool.coverage.paths]
+source = ["src/"]
+
+[tool.coverage.report]
+fail_under = 50 # 50% coverage required
+precision = 1 # n decimal points for coverage %
+show_missing = true
+exclude_lines = [
+  "nocov",
+  "pragma: no cover",
+  "def __repr__",
+  "raise AssertionError",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]
+
+[tool.mypy]
+# mypy_path is needed even if invoking via e.g. `mypy src/`
+mypy_path = "src/"
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_decorators = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+strict_equality = true
+pretty = true
+show_column_numbers = true
+show_error_code_links = true
+show_traceback = true # applies to fatal errors
+warn_unused_configs = true # warn if path has no source files
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true
+
+#
+###########################################################
+#                     [tool.tyranno]
+###########################################################
+
+[tool.tyranno]
+
+# perform sync on these files
+target_globs = [
+  "pyproject.toml", ".github/**/*.yaml",
+  "src/**/*.py", "tests/**/*.py", "*.md",
+]
+
+trash_globs = ["**/*~", "**/*.bak", "**/*.temp", "**/*.tmp", "**/*.pyi", "build/"]
+
+#=============== Tyranno sync from web ===============#
+[tool.tyranno.fetch]
+# Sync is performed after these are fetched, so our project-specific strings are preserved.
+uris = [
+  "https://github.com/dmyersturnbull/tyranno/blob/main/.gitignore",
+  "https://github.com/dmyersturnbull/tyranno/blob/main/.dockerignore",
+  "https://github.com/dmyersturnbull/tyranno/blob/main/.editorconfig",
+  "https://github.com/dmyersturnbull/tyranno/blob/main/.gitattributes",
+  "https://github.com/dmyersturnbull/tyranno/blob/main/.prettierignore",
+]
+
+#=============== Tyranno main data ===============#
+# You can add any key-value pairs you want here;
+# they're only referenced by 'tyranno' sync comments.
+# No keys here have specific meanings.
+[tool.tyranno.data]
+vendor            = "rcsb"
+frag              = "${.vendor}/${project.name}"
+copyright         = "Copyright ${~|year(now_utc())~}, Contributors to ${project.name}"
+# This is the version used in CD and some CI
+# :tyranno: python-version-in-cicd = "${project.requires-python~.semver_max(@).semver_minor(@)}"
+python-version-in-cicd = "3.12.3"
+# These are the versions to test in CI:
+# :tyranno: python-versions = ${project.requires-python|semver_best_set(@).semver_minor(@)}
+python-versions = ["3.12.3"]
