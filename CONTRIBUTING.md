@@ -1,0 +1,44 @@
+# Contributing
+
+### Bug reports, feature requests, and questions
+
+To report a bug or request a feature, or if you have any questions,
+contact [RCSB support](https://www.rcsb.org/pages/contactus) by
+**emailing <a href="info@rcsb.org">info@rcsb.org</a>**.
+
+### Source code contributions
+
+Contributions are always welcome.
+Before writing any code, discuss the proposed changes with the developers by emailing
+<a href="info@rcsb.org">info@rcsb.org</a>.
+
+Also, make sure that Git has `user.name` and `user.email` set correctly.
+
+Avoid making changes not related to the proposal so that your contributions are properly listed.
+Feel free to open a draft pull request (PR) at any time – even long before the changes are complete.
+
+### Recommended pull request workflow
+
+We recommend the following steps, which use the
+[GitHub CLI](https://cli.github.com/).
+
+```bash
+python -m install --upgrade pip
+pip install hatch pre-commit
+gh repo fork https://github.com/rcsb/rcsb-chem-search --default-branch-only --clone
+cd rcsb-chem-search
+pre-commit install
+```
+
+To commit, use either `hatch run commit --signoff` (interactive) or `git commit --signoff`.
+`--signoff` certifies under the
+[Developer Certificate of Origin](https://developercertificate.org/)
+that you have the right to submit your contributions.
+
+Create a PR by running
+
+```bash
+gh pr create --fill --web --draft
+```
+
+When you are ready, mark the PR as *ready for review*.
