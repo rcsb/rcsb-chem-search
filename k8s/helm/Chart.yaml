@@ -1,0 +1,6 @@
+apiVersion: v2
+name: rcsb-chem-search
+description: K8s Helm chart for rcsb-chem-search
+type: application
+appVersion: "0.0.1" # Sync with pyproject.toml (PEP 440 to SemVer)
+version: "0.0.1-0" # Use {appVersion}-{build#}

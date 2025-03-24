@@ -1,0 +1,98 @@
+{{- range tuple "a" "b" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "helm_chart.fullname" $ }}-{{ . }}
+  labels:
+    {{- include "helm_chart.labels" $ | nindent 4 }}
+    rcsb.org/path: {{ . | quote }}
+spec:
+  replicas: {{ $.Values.replicaCount }}
+  revisionHistoryLimit: {{ $.Values.revisionHistoryLimit}}
+  selector:
+    matchLabels:
+      {{- include "helm_chart.selectorLabels" $ | nindent 6 }}
+      rcsb.org/path: {{ . | quote }}
+  strategy:
+    type: {{ $.Values.deploymentStrategy.type }}
+    {{- if eq $.Values.deploymentStrategy.type "RollingUpdate" }}
+    rollingUpdate:
+      maxSurge: {{ $.Values.deploymentStrategy.maxSurge }}
+      maxUnavailable: {{ $.Values.deploymentStrategy.maxUnavailable }}
+    {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "helm_chart.selectorLabels" $ | nindent 8 }}
+        rcsb.org/path: {{ . | quote }}
+    spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    {{- include "helm_chart.selectorLabels" $ | nindent 20 }}
+                topologyKey: kubernetes.io/hostname
+              weight: 1
+      imagePullSecrets:
+        - name: {{ $.Values.imagePullSecrets }}
+      securityContext:
+        {{- toYaml $.Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ $.Chart.Name }}
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag | default $.Chart.AppVersion }}"
+          imagePullPolicy: {{ $.Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml $.Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - containerPort: {{ $.Values.service.containerPort }}
+              protocol: TCP
+          startupProbe:
+            initialDelaySeconds: {{ $.Values.initialStartupDelaySeconds }}
+            failureThreshold: {{ $.Values.startupProbe.failureThreshold }}
+            periodSeconds: {{ $.Values.startupProbe.periodSeconds }}
+            httpGet:
+              path: {{ $.Values.startupProbe.http.path }}
+              port: {{ $.Values.service.containerPort }}
+          livenessProbe:
+            initialDelaySeconds: {{ $.Values.initialLivenessDelaySeconds }}
+            failureThreshold: {{ $.Values.livenessProbe.failureThreshold }}
+            periodSeconds: {{ $.Values.livenessProbe.periodSeconds }}
+            httpGet:
+              path: {{ $.Values.livenessProbe.http.path }}
+              port: {{ $.Values.service.containerPort }}
+          readinessProbe:
+            initialDelaySeconds: {{ $.Values.initialReadinessDelaySeconds }}
+            failureThreshold: {{ $.Values.readinessProbe.failureThreshold }}
+            periodSeconds: {{ $.Values.readinessProbe.periodSeconds }}
+            httpGet:
+              path: {{ $.Values.readinessProbe.http.path }}
+              port: {{ $.Values.service.containerPort }}
+          volumeMounts:
+            - mountPath: {{ $.Values.persistentVolumeMountPath }}
+              name: {{ include "helm_chart.pvname" $ }}-{{ . }}
+              readOnly: {{ $.Values.persistentVolumeReadOnly }}
+            - name: tmpfs
+              mountPath: /tmp
+          resources:
+            {{- toYaml $.Values.resources | nindent 12 }}
+      volumes:
+        - name: {{ include "helm_chart.fullname" $ }}-config
+          configMap:
+            name: {{ include "helm_chart.fullname" $ }}-config
+        - name: {{ include "helm_chart.fullname" $ }}-secret
+          secret:
+            secretName: {{ include "helm_chart.fullname" $ }}-secret
+        {{- if $.Values.usePersistentVolume }}
+        - name: {{ include "helm_chart.pvname" $ }}-{{ . }}
+          persistentVolumeClaim:
+            claimName: {{ include "helm_chart.pvname" $ }}-{{ . }}
+        {{- end }}
+        - name: elastic-apm-agent
+          emptyDir: { }
+        - name: tmpfs
+          emptyDir:
+            medium: Memory
+{{- end }}
