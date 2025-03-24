@@ -1,121 +1,96 @@
 # SPDX-FileCopyrightText: Copyright 2020-2024, Contributors to Tyrannosaurus
 # SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
 # SPDX-License-Identifier: Apache-2.0
-#
-name: Update Project Settings
+
+# Replaces all issue/PR labels, and sets description, homepage, and topics if a secret called PAT is defined
+# github.token only has read permission for 'metadata'
+# https://docs.github.com/en/actions/security-for-github-actions/security-guides/automatic-token-authentication#
+
+name: Update project settings
+run-name: >
+  ${{ github.workflow }}
+  (run=${{ github.run_id }})
 
 on:
   push:
+    paths:
+      - '.github/project.yaml'
+      - '.github/workflows/set-repo-metadata.yaml'
     branches:
       - main
       - master
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
-  update_settings:
+  update-metadata:
     runs-on: ubuntu-latest
+    env:
+      SETTINGS_PATH: .github/project.yaml
+      # for historical reasons, the GH CLI uses GH_TOKEN instead of GITHUB_TOKEN
+      # https://github.com/github/docs/issues/21930
+      GH_TOKEN: ${{ github.token }}
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
+      - name: Install yq
+        run: sudo snap install yq
 
-      - name: Install PyYAML
-        run: pip install 'pyyaml >=6'
+      # TODO: broken
+      #      - name: Set repo metadata
+      #        env:
+      #          GH_TOKEN: ${{ secrets.PAT }}
+      #        run: |
+      #          # Read the metadata
+      #          description=$(yq eval '.description' "${SETTINGS_PATH}")
+      #          homepage=$(yq eval '.homepage' "${SETTINGS_PATH}")
+      #          topics=$(yq eval '.topics | join(",")' "${SETTINGS_PATH}")
+      #          # Update repo
+      #          gh repo edit "${{ github.repository }}" \
+      #            --description "${description}" \
+      #            --homepage "${homepage}" \
+      #            --add-topic "${topics}"
+      #          && echo "Updated repo description, homepage, and topics."
 
-      - name: Read project.yaml and set repository settings
-        id: update_project_settings
+      - name: Delete existing labels
         run: |
-          import os
-          from pathlib import Path
+          # Fetch all existing labels using REST API
+          labels_blob=$(gh api "/repos/${{ github.repository }}/labels" --jq '.[].name')
+          # Loop over the labels and delete them
+          while IFS= read -r label; do
+            echo "Deleting label: //${label}//"
+            gh api --method DELETE "/repos/${{ github.repository }}/labels/${label}"
+          done <<< "${labels_blob}"
 
-          import yaml
+      - name: Wait for changes to be made
+        shell: bash
+        run: |
+          sleep 15
+          labels_blob=$(gh api "/repos/${{ github.repository }}/labels" --jq '.[].name')
+          # Loop over the labels and delete them
+          while IFS= read -r label; do
+            echo "ERROR!! ${label} still exists."
+            exit 1
+          done
 
-          path = Path(".github/project.yaml")
-          data = yaml.safe_loads(path.read_text(encoding="utf-8"))
-
-          # Extract data from YAML
-          description = data.get("description", "")
-          homepage = data.get("homepage", "")
-          topics = data.get("topics", [])
-          labels = data.get("labels", [])
-
-          # Export data as environment variables for the next step
-          print(f"::set-output name=description::{description}")
-          print(f"::set-output name=homepage::{homepage}")
-          print(f"::set-output name=topics::{",".join(topics)}")
-          for label in labels:
-              print(f"::set-output name=label_name_{labels.index(label)}::{label["name"]}")
-              print(f"::set-output name=label_description_{labels.index(label)}::{label["description"]}")
-              print(f"::set-output name=label_color_{labels.index(label)}::{label["color"]}")
-
-      - name: Update repo settings
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const description = process.env.DESCRIPTION || '';
-            const homepage = process.env.HOMEPAGE || '';
-            const topics = process.env.TOPICS ? process.env.TOPICS.split(',') : [];
-            const labels = process.env.LABELS ? process.env.LABELS.split(',') : [];
-
-            // Update repository description and homepage
-            await github.repos.update({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              description: description,
-              homepage: homepage
-            });
-            // Update repository topics
-            await github.repos.replaceAllTopics({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              names: topics
-            });
-            // Update repository topics
-            await github.repos.replaceAllTopics({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              names: topics
-            });
-            // Get existing labels
-            const existingLabels = await github.issues.listLabelsForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo
-            });
-            // Delete existing labels
-            for (const label of existingLabels.data) {
-              await github.issues.deleteLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: label.name
-              });
-            }
-
-            // Add new labels
-            const labels = [];
-            for (let i = 0; process.env[`LABEL_NAME_${i}`]; i++) {
-              labels.push({
-                name: process.env[`LABEL_NAME_${i}`],
-                description: process.env[`LABEL_DESCRIPTION_${i}`],
-                color: process.env[`LABEL_COLOR_${i}`].replace('#', '')
-              });
-            }
-
-            for (const label of labels) {
-              await github.issues.createLabel({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: label.name,
-                description: label.description,
-                color: label.color
-              });
-            }
-
-        env:
-          DESCRIPTION: ${{ steps.update_project_settings.outputs.description }}
-          HOMEPAGE: ${{ steps.update_project_settings.outputs.homepage }}
-          TOPICS: ${{ steps.update_project_settings.outputs.topics }}
-          LABELS: ${{ steps.update_project_settings.outputs.labels }}
+      - name: Create new labels
+        run: |
+          # Extract the new labels into var ${labels}, a JSON string
+          labels=$(yq eval --output-format=json '.labels' "${SETTINGS_PATH}")
+          # Iterate over the labels, adding one at a time
+          echo "${labels}" | jq --compact-output '.[]' | while read label; do
+            # Extract the keys out of the JSON entry
+            name=$(echo "${label}" | jq --raw-output '.name')
+            description=$(echo "${label}" | jq --raw-output '.description')
+            color=$(echo "${label}" | jq --raw-output '.color' | sed 's/#//')
+            # Add the label via the REST API
+            echo "Creating label ${name}"
+            gh api --method POST "/repos/${{ github.repository }}/labels" \
+              -f name="${name}" \
+              -f color="${color}" \
+              -f description="${description}" \
+              -H "Accept: application/vnd.github+json"
+          done

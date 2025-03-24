@@ -11,6 +11,7 @@ import contextlib
 import io
 import logging
 import time
+from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path, PurePath
 from typing import Self, TYPE_CHECKING
@@ -25,20 +26,20 @@ _logger = logging.getLogger(logger_name)
 
 
 class Capture(contextlib.ExitStack):
-    def __init__(self: Self) -> None:
+    def __init__(self) -> None:
         super().__init__()
         self._stdout = io.StringIO()
         self._stderr = io.StringIO()
 
     @property
-    def stdout(self: Self) -> str:
+    def stdout(self) -> str:
         return self._stdout.getvalue()
 
     @property
-    def stderr(self: Self) -> str:
+    def stderr(self) -> str:
         return self._stderr.getvalue()
 
-    def __enter__(self: Self) -> Self:
+    def __enter__(self) -> Self:
         _logger.debug("Capturing stdout and stderr")
         super().__enter__()
         self._stdout_context = self.enter_context(contextlib.redirect_stdout(self._stdout))
@@ -47,7 +48,7 @@ class Capture(contextlib.ExitStack):
         self._stderr_context = self.enter_context(contextlib.redirect_stderr(self._stderr))
         return self
 
-    def __exit__(self: Self, exc_type: BaseException, exc_value: BaseException, traceback: TracebackType) -> None:
+    def __exit__(self, exc_type: BaseException, exc_value: BaseException, traceback: TracebackType) -> None:
         _logger.debug("Finished capturing stdout and stderr")
         # The ExitStack handles everything
         super().__exit__(exc_type, exc_value, traceback)
@@ -71,7 +72,7 @@ class TestResources:
 
     @classmethod
     @contextlib.contextmanager
-    def capture(cls: type[Self]) -> Capture:
+    def capture(cls) -> Generator[Capture]:
         """
         Context manager that captures stdout and stderr in a `Capture` object that contains both.
         Useful for testing code that prints to stdout and/or stderr.

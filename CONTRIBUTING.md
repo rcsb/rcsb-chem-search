@@ -20,15 +20,29 @@ Feel free to open a draft pull request (PR) at any time – even long before the
 
 ### Recommended pull request workflow
 
-We recommend the following steps, which use the
+We recommend the following steps, which use
+[uv](https://docs.astral.sh/uv/)
+and the
 [GitHub CLI](https://cli.github.com/).
 
+<b>Using a fork:</b>
+
 ```bash
-python -m install --upgrade pip
-pip install hatch pre-commit
-gh repo fork https://github.com/rcsb/rcsb-chem-search --default-branch-only --clone
+#gh repo fork https://github.com/rcsb/rcsb-chem-search --default-branch-only --clone
+gh repo fork rcsb-chem-search --clone --default-branch-only
 cd rcsb-chem-search
-pre-commit install
+uv run pre-commit install
+```
+
+<b>Using a branch (RCSB members):</b>
+
+```bash
+read -p "Branch name (e.g. fix/RO-1550--dmt or dev-dmt-): " branch
+#gh repo fork https://github.com/rcsb/rcsb-chem-search --default-branch-only --clone
+gh repo clone rcsb-chem-search -- --single-branch
+git switch -c "$branch"
+cd rcsb-chem-search
+uv run pre-commit install
 ```
 
 Create a PR by running

@@ -1,54 +1,103 @@
-# SPDX-FileCopyrightText: Copyright 2020-2024, Contributors to Tyrannosaurus
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
 # SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
 # SPDX-License-Identifier: Apache-2.0
-#
-# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
-# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
-# SPDX-License-Identifier: BSD-3-Clause
-#
-# Adapted from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
-# Also includes elements from:
-# https://stackoverflow.com/questions/53835198/integrating-python-poetry-with-docker/54763270#54763270
 
-# :tyranno: FROM python:${.python-version-in-cicd.semver_minor(@)~}
-FROM python:3.12
-
-# --------------------------------------
-# ------------- Set labels -------------
-
-# See https://github.com/opencontainers/image-spec/blob/master/annotations.md
-# :tyranno: LABEL org.opencontainers.image.version="${project.version}"
+# Set the labels.
+# These are standard opencontainer labels; see:
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+# :tyranno: LABEL org.opencontainers.image.version="${{project.version}}"
 LABEL org.opencontainers.image.version="0.0.1-alpha0"
-# :tyranno: LABEL org.opencontainers.image.vendor="${tool.cicd.data.vendor}"
-LABEL org.opencontainers.image.vendor="rcsb"
-# :tyranno: LABEL org.opencontainers.image.title="${project.name}"
-LABEL org.opencontainers.image.title="rcsbchemsearch"
-# :tyranno: LABEL org.opencontainers.image.url="${project.urls.Homepage}"
-LABEL org.opencontainers.image.url="https://github.com/rcsb/rcsbchemsearch"
-# :tyranno: LABEL org.opencontainers.image.documentation="${project.urls.docs}"
-LABEL org.opencontainers.image.documentation="https://github.com/rcsb/py-rcsbchemsearch"
+# :tyranno: LABEL org.opencontainers.image.vendor="${{.vendor}}"
+LABEL org.opencontainers.image.vendor="dmyersturnbull"
+# :tyranno: LABEL org.opencontainers.image.title="${{project.name}}"
+LABEL org.opencontainers.image.title="sandbox-tyranno"
+# :tyranno: LABEL org.opencontainers.image.url="${{project.urls.Homepage}}"
+LABEL org.opencontainers.image.url="https://github.com/dmyersturnbull/sandbox-tyranno"
+# :tyranno: LABEL org.opencontainers.image.documentation="${{project.urls.Documentation}}"
+LABEL org.opencontainers.image.documentation="https://github.com/dmyersturnbull/sandbox-tyranno"
 
-# --------------------------------------
-# ---------- Copy and install ----------
+# Declare the core build args.
+# These must exist outside of any stage and be declared before the first FROM.
+ARG ALPINE_VERSION=""
+# :tyranno: ARG PYTHON_VERSION="${{.default-python-version.vr_minor(@)}}"
+ARG PYTHON_VERSION="3.13"
 
-# ENV no longer adds a layer in new Docker versions,
-# so we don't need to chain these in a single line
-ENV PYTHONFAULTHANDLER=1
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONHASHSEED=random
-ENV PIP_DISABLE_PIP_VERSION_CHECK=on
-ENV PIP_DEFAULT_TIMEOUT=120
+# -------------------- Download uv and set vars --------------------
 
-WORKDIR /app
-COPY . /app/
+# Start the stage "builder", and download uv.
+FROM python:$PYTHON_VERSION:alpine$ALPINE_VERSION as builder
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+SHELL ["/bin/bash", "-c"]
 
-RUN pip install .
+# Environment variables
+ENV PATH=/root/.cargo/bin/:/root/.local/bin:$PATH
+# Any non-empty string is taken as true for boolean UV and Python env vars.
+# https://docs.python.org/3/using/cmdline.html#envvar-PYTHONFAULTHANDLER
+ENV PYTHONFAULTHANDLER=yes
+# https://docs.python.org/3/using/cmdline.html#envvar-PYTHONUNBUFFERED
+ENV PYTHONUNBUFFERED=yes
+# https://docs.astral.sh/uv/guides/integration/docker/#compiling-bytecode
+ENV UV_LINK_MODE=copy
+# https://docs.astral.sh/uv/guides/integration/docker/#caching
+ENV UV_COMPILE_BYTECODE=yes
+# Alternative we're not using:
+# ENV UV_NO_CACHE=yes
 
+# -------------------- Install the project --------------------
+
+# We'll install in 2 layers: (1) transitive dependencies and (2) project, as described in
+# https://docs.astral.sh/uv/guides/integration/docker/#intermediate-layers
+# Then, we'll create a new stage containing only our installed package, as described in
+# https://docs.astral.sh/uv/guides/integration/docker/#non-editable-installs
+
+WORKDIR /var/app
+
+# Install the dependencies in one layer.
+RUN \
+  --mount=type=cache,target=/root/.cache/uv \
+  --mount=type=bind,source=uv.lock,target=uv.lock \
+  --mount=type=bind,source=pyproject.toml,target=pyproject.toml \
+  uv sync --locked --no-dev --no-editable --no-install-project
+
+# Copy the source and build/install it in another layer.
+COPY . /var/app/
+RUN \
+  --mount=type=cache,target=/root/.cache/uv \
+  uv sync --locked --no-dev --no-editable
+
+# ******************** In production only! ************************
+#
+# -------------------- Run in a fresh stage --------------------
+# Make a new stage that contains only the final venv.
+# FROM python:$PYTHON_VERSION:alpine$ALPINE_VERSION
+# COPY --from=builder --chown=app:app /var/app/.venv /var/app/.venv
+# *****************************************************************
+
+# Expose HTTP 1.1 & 2.0 on TCP/80, HTTPS 1.1 & 2.0 on TCP/443, and HTTP/3 on UDP/443.
 EXPOSE 80
 EXPOSE 443
+EXPOSE 443/udp
 
-CMD hypercorn\
-  rcsbchemsearch.api:app\
- --bind '[::]:80'\
- --bind '[::]:443'\
- --quic-bind '[::]:443'
+ENTRYPOINT [
+  "/var/app/.venv/bin/hypercorn",
+  "sandbox_tyranno.api:app"
+]
+CMD [
+  "--bind",
+  "[::]:80",
+  "--bind",
+  "[::]:443",
+  "--quic-bind",
+  "[::]:443"
+]
+
+ARG HEALTHCHECK_INTERVAL=5m
+ARG HEALTHCHECK_TIMEOUT=3s
+ARG HEALTHCHECK_START_PERIOD=5s
+
+# Ubuntu curl doesn't support --http3 yet
+HEALTHCHECK \
+  --interval=$HEALTHCHECK_INTERVAL \
+  --timeout=$HEALTHCHECK_TIMEOUT \
+  --start-period=$HEALTHCHECK_START_PERIOD \
+  CMD curl --fail --http2-prior-knowledge http://localhost/ || exit 1

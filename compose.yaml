@@ -1,38 +1,25 @@
-version: "3.8"
 services:
   web:
     build: .
     volumes:
       - .:/var/lib/app/
     ports:
-      - "80:80/tcp"
-      - "443:443/tcp"
-      - "80:80/udp"
-      - "443:443/udp"
-    expose:
-      - "80:80/tcp"
-      - "443:443/tcp"
-      - "80:80/udp"
+      - "80:80"
+      - "443:443"
       - "443:443/udp"
     environment:
-      - MONGODB_URI=mongodb://mongodb:27017/app
+      - MONGO_URI=mongodb://mongodb:27017/app
     depends_on:
-      - mongodb
-    networks:
-      - default
-  mongodb:
-    image: mongo:8.0.0
-    restart: unless-stopped
-    ports:
-      - "27017:27017/tcp"
-    volumes:
-      - type: volume
-        source: data
-        target: /var/lib/mongodb
-    networks:
-      - default
+      - mongo
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+
 volumes:
-  data:
+  mongo:
 
 networks:
   default:
+    enable_ipv6: true
