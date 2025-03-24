@@ -1,69 +1,122 @@
-# SPDX-FileCopyrightText: Copyright 2020-2024, Contributors to Tyrannosaurus
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
 # SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
 # SPDX-License-Identifier: Apache-2.0
 #
 # SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
 # SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
 # SPDX-License-Identifier: BSD-3-Clause
-#
-# Adapted from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
+
+# Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
+
 """
-A set of metadata about this package.
-The metadata is determined dynamically.
-In order:
-
-1. Attempts to load `importlib.metadata(pkg)`, where `pkg` is this directory name.
-2. Looks for a `../../pyproject.toml` file.
-3. Uses an empty map.
+Project metadata for use inside and outside `rcsb-chem-search`.
 """
-
-import logging
-import tomllib
-from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, PackageMetadata
-from importlib.metadata import metadata as __importlib_load
-from pathlib import Path
-
-__all__ = ["About", "about"]
-__pkg = Path(__file__).parent.name
-logger = logging.getLogger(__pkg)
+from collections.abc import Sequence
+from typing import overload, NotRequired, ReadOnly, TypedDict
 
 
-def _load_metadata(pkg: str) -> dict[str, str] | PackageMetadata:
-    try:
-        return __importlib_load(pkg)
-    except PackageNotFoundError:  # nocov
-        pass
-    logger.debug(f"Did not find importlib metadata for package `{pkg}`. Is it installed?")
-    _pyproject = Path(__file__).parent.parent / "pyproject.toml"
-    _data: dict[str, str] = {}
-    if _pyproject.exists():
-        try:
-            _data = tomllib.loads(_pyproject.read_text(encoding="utf-8"))
-            logger.debug(f"Using metadata for package `{pkg}` from pyproject.toml.")
-        except tomllib.TOMLDecodeError as e:
-            logger.debug(f"Encountered error while decoding `{_pyproject.resolve()}`.", e)
-    if len(_data) == 0:
-        logger.debug(f"Did not find metadata for package `{pkg}` in pyproject.toml.")
-    return {k.capitalize(): v for k, v in _data.get("project", {}) if isinstance(k, str)}
+class _FrozenList[T](Sequence[T]):
+
+    def __init__(self, *items: T) -> None:
+        self.__items = list(items)
+
+    @overload
+    def __getitem__(self, index: int) -> T:
+        ...
+
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[T]:
+        ...
+
+    def __getitem__(self, index: int | slice) -> T | Sequence[T]:
+        return self.__items[index]
+
+    def __len__(self):
+        return len(self.__items)
+
+    def __hash__(self) -> int:
+        return hash(tuple(self.__items))
+
+    def __eq__(self, other: Sequence[T]) -> bool:
+        if isinstance(other, _FrozenList):
+            return self.__items == other.__items
+        if isinstance(other, Sequence):
+            return self.__items == list(other)
+        return NotImplemented
 
 
-@dataclass(frozen=True, slots=True)
-class About:
-    namespace: str
-    homepage: str
-    title: str
-    summary: str
-    license: str
-    version: str
+class UrlDict(TypedDict):
+    """URLs for this project, per [PyPi Project Metadata](https://docs.pypi.org/project_metadata/)."""
+    homepage: ReadOnly[str]
+    changelog: ReadOnly[str]
+    source: ReadOnly[str]
+    documentation: NotRequired[ReadOnly[str]]
+    download: NotRequired[ReadOnly[str]]
+    bug: NotRequired[ReadOnly[str]]
+    funding: NotRequired[ReadOnly[str]]
 
 
-__metadata = _load_metadata(__pkg)
-about = About(
-    namespace=__pkg,
-    homepage=__metadata.get("Home-page"),
-    title=__metadata.get("Name"),
-    summary=__metadata.get("Summary"),
-    license=__metadata.get("License"),
-    version=__metadata.get("Version"),
+class About(TypedDict):
+    """
+    Metadata about this package.
+
+    Attributes:
+        namespace: name of the directory containing this module.
+        name: pyproject `project.name`                   / importlib `Name`    .
+        version: pyproject `project.version`             / importlib `version`.
+        summary: pyproject `project.description`         / importlib `Summary`.
+        license: pyproject `project.license.text`        / importlib `License`;
+          an SPDX ID such as `Apache-2.0`.
+        authors: pyproject `project.authors[*].name`      / importlib `Author` split by ` and `;
+          e.g. `["Kerri Kerrigan", "Adam Addison"]`.
+        maintainers: pyproject `project.authors[*].name` / importlib `Author` split by ` and `;
+          e.g. `["Kerri Kerrigan", "Adam Addison"]`.
+        keywords: pyproject `project.keywords`           / importlib `Keywords`.
+        urls: pyproject  `project.urls` subset           / `Project-URL` subset.
+          Only recognized general URLs from
+          [PyPi Project Metadata](https://docs.pypi.org/project_metadata/).
+          Attributes are lowercased versions of the "Name", from the "General URL" table.
+    """
+
+    name: ReadOnly[str]
+    namespace: ReadOnly[str]
+    version: ReadOnly[str]
+    summary: ReadOnly[str]
+    license: ReadOnly[str]
+    authors: ReadOnly[Sequence[str]]
+    maintainers: ReadOnly[Sequence[str]]
+    keywords: ReadOnly[Sequence[str]]
+    urls: ReadOnly[UrlDict]
+
+
+__about__ = About(
+    namespace="rcsbchemsearch",
+    # :tyranno: name="${project.name}",
+    name="rcsb-chem-search",
+    # :tyranno: version="${project.version}",
+    version="0.0.1-alpha0",
+    # :tyranno: summary="${project.summary}",
+    summary="Backend REST API supporting chemical similarity searches on RCSB PDB chemical components.",
+    # :tyranno: authors=${project.authors[*].name|unpack(@)},
+    authors=["Douglas Myers-Turnbull"],
+    # :tyranno: maintainers=_FrozenList(${project.maintainers[*].name|unpack(@)}),
+    maintainers=_FrozenList(["Douglas Myers-Turnbull"]),
+    # :tyranno: name=${project.keywords|unpack(@)},
+    keywords=_FrozenList("cheminformatics", "search", "rcsb", "pdb"),
+    # :tyranno: license="${project.license.text}",
+    license="Apache-2.0",
+    urls=UrlDict(
+        # :tyranno: homepage="${project.urls.Homepage}",
+        homepage="https://github.com/rcsb/rcsb-chem-search",
+        # :tyranno: source="${project.urls.Source}",
+        source="https://github.com/rcsb/rcsb-chem-search",
+        # :tyranno: documentation="${project.urls.Documentation}",
+        documentation="https://github.com/rcsb/rcsb-chem-search",
+        # :tyranno: changelog="${project.urls.Release Notes}",
+        changelog="https://github.com/rcsb/rcsb-chem-search/releases",
+        # :tyranno: download="${project.urls.Download}",
+        download="https://pypi.org/rcsb/rcsb-chem-search/",
+        # :tyranno: bug="${project.urls.Tracker}",
+        bug="https://github.com/rcsb/rcsb-chem-search/issues",
+    ),
 )
