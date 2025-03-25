@@ -1,16 +1,24 @@
-# SPDX-FileCopyrightText: Copyright 2020-2024, Contributors to Tyrannosaurus
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
 # SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
 # SPDX-License-Identifier: Apache-2.0
 #
+# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
+# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
+
 # A short description of the repository that will show up on GitHub
 # :tyranno: description: ${project.description}
-description: CI/CD example
+description: Backend REST API supporting chemical similarity searches on RCSB PDB chemical components.
 # :tyranno: homepage: ${project.urls.Homepage}
-homepage: https://github.com/rcsb/py-rcsbchemsearch
+homepage: https://github.com/rcsb/rcsb-chem-search
 # :tyranno: topics: ${project.keywords}
 topics:
-  - ci
-  - ci/cd
+  - cheminformatics
+  - search
+  - rcsb
+  - pdb
 
 labels:
   - name: "breaking"
