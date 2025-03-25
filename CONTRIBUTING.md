@@ -51,4 +51,4 @@ Create a PR by running
 gh pr create --fill --web --draft
 ```
 
-When you are ready, mark the PR as *ready for review*.
+When you are ready, mark the PR as _ready for review_.

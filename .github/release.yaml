@@ -5,40 +5,40 @@
 changelog:
   exclude:
     labels:
-      - 'type: chore'
-      - 'type: style'
-      - 'changelog: exclude'
+      - "type: chore"
+      - "type: style"
+      - "changelog: exclude"
   categories:
-    - title: '💥 Breaking changes'
+    - title: "💥 Breaking changes"
       labels:
-        - 'breaking'
-    - title: '❌ Removals'
+        - "breaking"
+    - title: "❌ Removals"
       labels:
-        - 'type: drop'
-    - title: '🗑️ Deprecations'
+        - "type: drop"
+    - title: "🗑️ Deprecations"
       labels:
-        - 'type: deprecation'
-    - title: '🔒️ Security'
+        - "type: deprecation"
+    - title: "🔒️ Security"
       labels:
-        - 'type: security'
-    - title: '✨ Features'
+        - "type: security"
+    - title: "✨ Features"
       labels:
-        - 'type: feature'
-    - title: '🐛 Fixes'
+        - "type: feature"
+    - title: "🐛 Fixes"
       labels:
-        - 'type: fix'
-    - title: '⚡️ Performance'
+        - "type: fix"
+    - title: "⚡️ Performance"
       labels:
-        - 'type: performance'
-    - title: '📝 Documentation'
+        - "type: performance"
+    - title: "📝 Documentation"
       labels:
-        - 'type: docs'
-    - title: '🔧 Build'
+        - "type: docs"
+    - title: "🔧 Build"
       labels:
-        - 'type: build'
-    - title: '🍒 Miscellaneous'
+        - "type: build"
+    - title: "🍒 Miscellaneous"
       labels:
-        - 'type: refactor'
-        - 'type: test'
-        - 'type: ci'
-        - 'changelog: include'
+        - "type: refactor"
+        - "type: test"
+        - "type: ci"
+        - "changelog: include"

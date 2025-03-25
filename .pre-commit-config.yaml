@@ -25,13 +25,13 @@ repos:
 
   # UV lock
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.6.8
+    rev: 0.6.9
     hooks:
-      - id: uv-lock
+      - id: uv-sync
 
   # Format and lint Python with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.0
+    rev: v0.11.2
     hooks:
       - id: ruff
         args:
@@ -39,7 +39,7 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/adamtheturtle/doccmd-pre-commit
-    rev: v2025.03.18
+    rev: v2025.3.18
     hooks:
       - id: doccmd
         alias: docmd-ruff-format
@@ -51,7 +51,6 @@ repos:
           - --no-pad-file
           - --no-pad-groups
           - --temporary-file-name-prefix=.~doccmd-
-          - docs/
           - README.md
         additional_dependencies:
           - ruff

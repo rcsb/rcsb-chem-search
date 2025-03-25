@@ -82,7 +82,7 @@ jobs:
     # This job publishes the package to PyPI.
     name: Publish to PyPi
     needs: build-dist
-    if: !contains(github.ref_name, '-') # Skip for pre-releases
+    if: !contains(github.ref_name , '-') # Skip for pre-releases
     runs-on:
       - self-hosted
       - ubuntu-22.04
