@@ -33,6 +33,7 @@ rookCeph:
   preserveFilesystemOnDelete: true
   reclaimPolicy: Retain
   allowVolumeExpansion: true
+  pvcRequestStorageSize: 32Gi
   pvcAccessModes:
     - ReadOnlyMany
 
