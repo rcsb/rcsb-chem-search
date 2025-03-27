@@ -6,26 +6,26 @@ revisionHistoryLimit: 3
 # vaultSecretStoreName is the name of the ClusterSecretStore resource to pull secret credentials
 vaultSecretStoreName: "rcsb-vault"
 
-initialStartupDelaySeconds: 30
 startupProbe:
   httpGet:
     path: /alive
   failureThreshold: 5
   periodSeconds: 12
+  initialDelaySeconds: 30
 
-initialReadinessDelaySeconds: 30
 readinessProbe:
-  http:
+  httpGet:
     path: /ready
   failureThreshold: 10
   periodSeconds: 12
+  initialDelaySeconds: 30
 
-initialLivenessDelaySeconds: 0
 livenessProbe:
-  http:
+  httpGet:
     path: /alive
   failureThreshold: 3
   periodSeconds: 12
+  initialDelaySeconds: 30
 
 rookCeph:
   metadataPoolSize: 3
