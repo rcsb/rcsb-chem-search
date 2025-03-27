@@ -35,7 +35,7 @@ rookCeph:
   allowVolumeExpansion: true
   pvcRequestStorageSize: 32Gi
   pvcAccessModes:
-    - ReadOnlyMany
+    - ReadWriteMany
 
 image:
   repository: harbor.devops.k8s.rcsb.org/rcsb/rcsb-chem-search
