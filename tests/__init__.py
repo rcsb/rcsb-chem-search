@@ -14,7 +14,7 @@ import time
 from collections.abc import Generator
 from datetime import datetime
 from pathlib import Path, PurePath
-from typing import Self, TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 from zoneinfo import ZoneInfo
 
 if TYPE_CHECKING:

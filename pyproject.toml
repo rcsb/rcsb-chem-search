@@ -33,7 +33,6 @@ classifiers = [
   "Environment :: Web Environment",
   "Framework :: FastAPI",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: BSD License",
   "Natural Language :: English",
   "Operating System :: OS Independent",
   "Programming Language :: Python",
@@ -45,14 +44,14 @@ classifiers = [
 ]
 
 dependencies = [
-  "fastapi>=0.115,<1.0",
+  "fastapi>=0.115",
   "granian>=2.0",
   "loguru>=0.7.3",
   "niquests>=3.13",
   "scikit-fingerprints>=1.15", # When updating, adjust any API docs (e.g. if default parameters change)
-  "rdkit>=2024.9.4", # When updating, check for backwards-incompatible changes.
+  "rdkit>=2024.9.6", # When updating, check for backwards-incompatible changes.
   "typer-slim>=0.15",
-  "tzdata>=2025.1; platform_system == 'Windows'",
+  "tzdata>=2025.2; platform_system == 'Windows'",
 ]
 
 [project.optional-dependencies]
