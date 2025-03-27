@@ -78,28 +78,6 @@ jobs:
           token: ${{ secrets.github_token }}
           files: dist/*
 
-  publish-to-pypi:
-    # This job publishes the package to PyPI.
-    name: Publish to PyPi
-    needs: build-dist
-    if: !contains(github.ref_name , '-') # Skip for pre-releases
-    runs-on:
-      - self-hosted
-      - ubuntu-22.04
-    steps:
-      - name: Download dist/ GH workflow artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: dist
-      - uses: astral-sh/setup-uv@v5
-        with:
-          python-version: "3.13"
-          enable-cache: true
-      - name: Publish to PyPi using uv.
-        # See: https://docs.pypi.org/trusted-publishers/adding-a-publisher/
-        run: |
-          uv publish
-
   publish-to-harbor:
     name: Publish to Harbor
     # https://github.com/rcsb/devops-cicd-github-actions/blob/master/.github/workflows/workflow-docker.yaml
