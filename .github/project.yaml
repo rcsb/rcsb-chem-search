@@ -9,11 +9,11 @@
 # Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
 
 # A short description of the repository that will show up on GitHub
-# :tyranno: description: ${project.description}
+# :tyranno: description: ${{project.description}}
 description: Backend REST API supporting chemical similarity searches on RCSB PDB chemical components.
-# :tyranno: homepage: ${project.urls.Homepage}
+# :tyranno: homepage: ${{project.urls.Homepage}}
 homepage: https://github.com/rcsb/rcsb-chem-search
-# :tyranno: topics: ${project.keywords}
+# :tyranno: topics: ${{project.keywords}}
 topics:
   - cheminformatics
   - search

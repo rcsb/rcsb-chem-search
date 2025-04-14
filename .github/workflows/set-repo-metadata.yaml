@@ -56,9 +56,9 @@ jobs:
       #          topics=$(yq eval '.topics | join(",")' "${SETTINGS_PATH}")
       #          # Update repo
       #          gh repo edit "${{ github.repository }}" \
-      #            --description "${description}" \
-      #            --homepage "${homepage}" \
-      #            --add-topic "${topics}"
+      #            --description "$description" \
+      #            --homepage "$homepage" \
+      #            --add-topic "$topics"
       #          && echo "Updated repo description, homepage, and topics."
 
       - name: Delete existing labels
@@ -83,7 +83,7 @@ jobs:
 
       - name: Create new labels
         run: |
-          # Extract the new labels into var ${labels}, a JSON string
+          # Extract the new labels into var ${{labels}}, a JSON string
           labels=$( yq eval --output-format=json '.labels' "$SETTINGS_PATH" )
           # Iterate over the labels, adding one at a time
           echo "$labels" | jq --compact-output '.[]' | while read label; do

@@ -1,18 +1,16 @@
+import os
+import sys
 from dataclasses import dataclass
 from typing import TypedDict
 
-__all__ = ["Molecule", "MoleculeDict"]
-
-
-class MoleculeDict(TypedDict):
-    key: str
-    smiles: str
-    inchi: str
-    inchikey: str
+__all__ = ["StructureData", "StructureDict"]
+StructureDict = TypedDict("StructureDict", {"key": str, "SMILES": str, "InChI": str, "InChI Key": str})
+IS_STDOUT_TTY = os.isatty(sys.stdout.fileno())
+IS_STDERR_TTY = os.isatty(sys.stderr.fileno())
 
 
 @dataclass(slots=True, frozen=True)
-class Molecule:
+class StructureData:
     key: str
     smiles: str
     inchi: str
@@ -22,11 +20,7 @@ class Molecule:
         return f"<{self.key}={self.inchikey}: {self.smiles}>"
 
     @property
-    def as_molecule_dict(self) -> MoleculeDict:
-        # Due to a limitation in Python
-        return MoleculeDict(
-            key=self.key,
-            smiles=self.smiles,
-            inchi=self.inchi,
-            inchikey=self.inchikey,
+    def as_dict(self) -> StructureDict:
+        return StructureDict(
+            **{"key": self.key, "SMILES": self.smiles, "InChI": self.inchi, "InChI Key": self.inchikey}
         )

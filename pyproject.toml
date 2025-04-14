@@ -2,6 +2,7 @@
 # SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
 # SPDX-License-Identifier: BSD-3-Clause
 
+#
 #########################################################################################
 #                                    [build-system]
 #########################################################################################
@@ -10,6 +11,7 @@
 build-backend = "hatchling.build"
 requires = ["hatchling>=1.27"]
 
+#
 #########################################################################################
 #                                      [project]
 #########################################################################################
@@ -45,11 +47,13 @@ classifiers = [
 
 dependencies = [
   "fastapi>=0.115",
+  "fastapi-problem>=0.10",
   "granian>=2.0",
   "loguru>=0.7.3",
   "niquests>=3.13",
   "scikit-fingerprints>=1.15", # When updating, adjust any API docs (e.g. if default parameters change)
   "rdkit>=2024.9.6", # When updating, check for backwards-incompatible changes.
+  "rfc9457>=0.3",
   "typer-slim>=0.15",
   "tzdata>=2025.2; platform_system == 'Windows'",
 ]
@@ -61,31 +65,27 @@ compression = [
   "zstd>=1.5.6",
 ]
 
-#
-#=================================== scripts =================================#
-#
+# -------------------------- scriptsURIs --------------------------------------
 [project.scripts]
-# :tyranno: ${project.name} = "${project.name}.__main__:cli"
+# :tyranno: ${{project.name}} = "${{project.name}}.__main__:cli"
 chem-search-etl = "rcsbchemsearch.__main__:cli"
 
-#
-#==================================== URIs ===================================#
-#
+# -------------------------- project URIs -------------------------------------
 [project.urls]
-# :tyranno: "https://github.com/${.frag}"
+# :tyranno: "https://github.com/${{.frag}}"
 Homepage = "https://github.com/rcsb/rcsb-chem-search"
-# :tyranno: "https://github.com/${.frag}"
+# :tyranno: "https://github.com/${{.frag}}"
 Source = "https://github.com/rcsb/rcsb-chem-search"
-# :tyranno: Documentation = https://${.vendor}.github.io/${project.name}
+# :tyranno: Documentation = https://${{.vendor}}.github.io/${{project.name}}
 Documentation = "https://github.com/rcsb/rcsb-chem-search"
-# :tyranno: "Tracker" = ${.home}/issues
+# :tyranno: "Tracker" = ${{.home}}/issues
 Tracker = "https://github.com/rcsb/rcsb-chem-search/issues"
-# :tyranno: Download = "https://pypi.org/project/${project.name}"
+# :tyranno: Download = "https://pypi.org/project/${{project.name}}"
 Download = "https://pypi.org/project/rcsb-chem-search/"
-# :tyranno: "Release Notes" = "https://github.com/${.frag}/releases"
+# :tyranno: "Release Notes" = "https://github.com/${{.frag}}/releases"
 "Release Notes" = "https://github.com/rcsb/rcsb-chem-search/releases"
 
-
+#
 #########################################################################################
 #                                          [dependency-groups]
 #########################################################################################
@@ -99,67 +99,78 @@ dev = [
   "pyright[nodejs]>=1.1",
   "pytest>=8.3",
   "pytest-cov>=6.0",
-  "ruff>=0.11",
+  "ruff>=0.11.5",
 ]
 
+#
+###################################################################################################
+#                                        [tool.hatch]
+###################################################################################################
+
 [tool.hatch.build.targets.wheel]
+
+# Needed only if `project.name.replace("-", "_") != namespace`,
+# where `namespace` is the dir under `src/`.
 packages = ["src/rcsbchemsearch"]
 
-
 #
-#########################################################################################
-#                                 [tool.ruff]
-#########################################################################################
+###################################################################################################
+#                                        [tool.ruff]
+###################################################################################################
 
 [tool.ruff]
-
-#
-#=================================== Ruff basics =============================#
-
-line-length = 120 # 120 is hatch's default via 'hatch init'
 include = [
   "*.py",           # Source
   "pyproject.toml", # This file (RUF rules only)
   "*.ipynb",        # Jupyter notebooks
 ]
+exclude = [] # Rely on https://docs.astral.sh/ruff/settings/#respect-gitignore
+src = ["src"] # Needed for import sorting
+line-length = 120 # 120 is hatch's default via 'hatch init'
 
-#
-#=================================== Ruff lint ==============================#
+#=========================== [tool.ruff.format] ==============================#
+[tool.ruff.format]
+docstring-code-format = true
+skip-magic-trailing-comma = true
 
+#=========================== [tool.ruff.lint] ================================#
 [tool.ruff.lint]
 
-#
-# ------------------------- Ruff misc. options ----------------------
 preview = true
-explicit-preview-rules = true
 
-#
-# ---------------------- Ruff selected rule sets --------------------
-
-#             # align to col 15 == 1 + len('  #' '"ASYNC'" '111' ',' ' ')
+# -------------------------- Ruff selected rules ------------------------------
+#          >>>#<<< align to col 15 (max possible width)
 select = [
   "A",        # flake8-builtins
-  #"AIR",     # Airflow //DISABLED: enable if using airflow//
+  "AIR",      # Airflow (does nothing if not used)
   "ANN",      # flake8-annotations
-  #"ARG",     # flake8-unused-args //DISABLED: correct in overrides//
+  #"ARG",     # flake8-unused-args //DISABLED: unused args may be necessary in overridden//
   "ASYNC",    # flake8-async
   "B",        # flake8-bugbear
-  "B901",     # PREVIEW: Return in generator
-  #"BLE",     # flake8-blind-exception (try: * except: only) //DISABLED: covered by E722 (?)//
+  "B901",     # PREVIEW: Both `return` and `yield` in function/method
+  #"BLE",     # flake8-blind-exception (try: * except: only) //DISABLED: covered by E722//
   "C4",       # flake8-comprehensions
   #"C90",     # mmcabe //DISABLED: useful but thin-lined and time-intensive//
   #"COM",     # flake8-commas //DISABLED: handled by formatter//
   #"CPY",     # flake8-copyright //DISABLED: handle carefully instead; also unmaintained//
   #"D",       # pydocstyle //DISABLED: most rules handled by formatter//
-  "D1",       # undocumented public methods, etc.
-  "D210",     # whitespace around text
+  "D100",     # undocumented public module (could be just 1 line)
+  "D101",     # undocumented public class (could be just 1 line)
+  #"D102",    # undocumented public method //DISABLED: unnecessary if obviously named//
+  #"D103",    # undocumented public method //DISABLED: unnecessary if obviously named//
+  #"D104",    # undocumented public package //DISABLED: unnecessary if obviously named//
+  #"D105",    # undocumented magic method //DISABLED: usually unnecessary//
+  #"D106",    # undocumented nested public class //DISABLED: often covered by enclosing class//
+  #"D107",    # undocumented `__init__` method //DISABLED: refactor if it needs documenting//
+  "D210",     # whitespace around text (almost all auto-fixable)
   "D214",     # over-indented section
-  "D3",       # docstring ''', \, etc.
-  "D4",       # blank docstring sections, etc.
-  #"DJ",      # flake8-django //DISABLED: enable if using Django//
-  "DOC",      # pydoclint //DISABLED: encourages writing sections out of habit//
-  #"DOC202",  # says "return" but does not (PREVIEW)
-  #"DOC403",  # says "yield" but does not (PREVIEW)
+  "D3",       # docstring ''', \, etc. (almost all auto-fixable)
+  "D4",       # blank docstring sections, etc. (almost all auto-fixable)
+  "DJ",       # flake8-django (does nothing if not used)
+  #"DOC",     # pydoclint //DISABLED: encourages writing sections out of habit//
+  "DOC202",   # says "return" but does not (PREVIEW)
+  "DOC403",   # says "yield" but does not (PREVIEW)
+  "DOC502",   # says "raise" but does not (PREVIEW)
   "DTZ",      # flake8-datetimez
   #"E",       # pycodestyle ERRORs //DISABLED: almost all handled by formatter//
   "E7",       # == True, bare except, lambda assignment, 'l' in names, etc.
@@ -169,7 +180,7 @@ select = [
   #"EXE",     # flake8-executable //DISABLED: pre-commit shebang rules instead//
   "F",        # pyflakes
   "FA",       # flake8-future-annotations
-  "FAST",     # fastapi (disable if not using)
+  "FAST",     # fastapi (does nothing if unused)
   #"FBT",     # flake8-boolean-trap //DISABLED: debatable and sometimes unavoidable//
   #"FIX",     # flake8-fix*me //DISABLED: unnecessary //
   "FIX003",   # 'XXX: ' comments (use F*I*X*M*E or T*O*D*O instead)
@@ -185,8 +196,8 @@ select = [
   "ISC",      # flake8-implicit-str-concat
   "LOG",      # flake8-logging
   "N",        # pep8-naming
-  #"NPY",     # numpy-specific rules //DISABLED: enable if using numpy//
-  #"PD",      # pandas-vet //DISABLED: enable if using pandas//
+  "NPY",      # Numpy rules (does nothing if not used)
+  "PD",       # pandas-vet (does nothing if not used)
   "PERF",     # perflint
   "PGH",      # pygrep-hooks
   "PIE",      # flake8-pie (misc. lint rules)
@@ -194,9 +205,9 @@ select = [
   "PT",       # flake8-pytest-style
   "PTH",      # flake8-use-pathlib
   #"PYI",     # flake8-pyi (rules for stub files) //DISABLED: auto-generate stub files//
-  #"Q",       # flake8-quotes //DISABLED: handled by formatter//
-  #"RSE",     # flake8-raise //DISABLED: handled by formatter//
-  "RET",      # flake8-return (fixable)
+  #"Q",       # flake8-quotes //DISABLED: discouraged by Ruff: formatter covers it//
+  #"RSE",     # flake8-raise //DISABLED: should pass exception args; auto-fix makes mistakes//
+  "RET",      # flake8-return (almost all auto-fixable)
   "RUF",      # Ruff-specific tests
   "S",        # bandit
   "SIM",      # flake8-simplify
@@ -204,47 +215,53 @@ select = [
   "SLOT",     # flake8-slots
   "T10",      # flake8-debugger (bans debugger)
   "T20",      # flake8-print (bands print and pprint)
-  #"TD",      # flake8-to*do (mandates syntax) //DISABLED: bans fix*me, requires author, nitpicky//
-  "TCH",      # flake8-type-checking
+  #"TC",      # flake8-type-checking //DISABLED: don't worry about TYPE_CHECKING blocks//
+  "TC004",    # move imports that can't be in TYPE_CHECKING blocks
+  "TC005",    # remove empty TYPE_CHECKING blocks
+  "TC008",    # remove quotes from type aliases
+  #"TD",      # flake8-to*do //DISABLED: bans fix*me, needs specific syntax, nitpicky//
+  #"TC",      # flake8-type-checking
   "TID",      # flake8-tidy-imports (bans relative imports)
   "TRY",      # tryceratops (try-except-raise)
   "UP",       # pyupgrade
-  "UP04",     # PREVIEW: 3.11+ fixes
   #"W",       # warnings //DISABLED: most fixed by formatter//
   "W60",      # E605 invalid escape character
   "YTT",      # flake8-2020 (incorrect Python version checks)
   "RUF",      # Ruff-specific rules
+  "RUF027",   # possible f-string (PREVIEW)
 ]
 
-#
-# ------------------------ Ruff ignored rules ----------------------
+# -------------------------- Ruff ignored rules -------------------------------
 ignore = [
-  "ISC001",   # contradicts Ruff formatter
   "PLR6301",  # 'self' not used (correct for overrides; more OOP)
+  "RUF001",   # confusable characters
+  "RUF002",   # confusable characters
+  "RUF003",   # confusable characters
+  "PLC0415",  # imports at top (sometimes want lazy import)
 ]
 
-#
-# ------------------------ Ruff unfixable rules ---------------------
+# -------------------------- Ruff unfixable rules -----------------------------
 unfixable = [
   "F841",     # unused variable
   "SIM112",   # uncapitalized env var
-  "TD006",    # 'to*do' -> 'TO*DO'
+  "RUF027",   # possible f-string -- can make mistakes
 ]
 
-#
-# ----------------------- Ruff delegated options --------------------
-
+# -------------------------- Ruff delegated options ---------------------------
 flake8-bandit.check-typed-exception = true
 pydocstyle.convention = "google"
 flake8-tidy-imports.ban-relative-imports = "all"
+isort.detect-same-package = false # Use `tool.ruff.src` instead.
 
+# -------------------------- delegated pylint options -------------------------
 [tool.ruff.lint.pylint]
-max-args = 8 # default is 5
-max-positional-args = 3 # default is 5
-max-bool-expr = 8 # default is 5
+max-args = 10 # default is 5 (leave `max_positional_args` at 5)
+max-bool-expr = 10 # default is 5
+max-public-methods = 30 # default is 20
+max-nested-blocks = 4 # default is 5
+allow-dunder-method-names = ["__rich_repr__"] # allow custom dunders
 
-#
-# ------------------------ Ruff per-file ignores --------------------
+# -------------------------- Ruff per-file ignores ----------------------------
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = [
   "INP001",  # missing __init__
@@ -258,24 +275,24 @@ max-bool-expr = 8 # default is 5
 ]
 
 #
-#########################################################################################
-#                                  [tool.pytest]
-#########################################################################################
+###################################################################################################
+#                                        [tool.pytest]
+###################################################################################################
 
-# A future version of pytest will create `[tool.pytest]`.
-[tool.pytest.ini_options]
+[tool.pytest.ini_options] # pending `[tool.pytest]`
 
 # This pytest 7+ option avoids repeating the package name in various options.
-#pythonpath = "./src" # critical!
 pythonpath = ["src/"]
 
 # Set the default path to `tests/` so that it can be omitted on CLI.
-# Don't use `.` or `["tests/", "src/"]`: That would mistakenly pick up `src/**/Test*.py`.
+# Don't use `.` or `["tests/", "src/"]`:
+# That would mistakenly pick up `src/**/Test*.py`.
 # Any doctests in `src/**/*.py` won't be found.
 # Doctests must be run manually like this:
 # `pytest --doctest-modules src/`
 testpaths = ["tests/"]
 
+# -------------------------- Logging config -----------------------------------
 # Configure logging, and send it "live" (in realtime) to stdout with `log_cli`.
 # In `tests/**/*.py`, append `-TEST` to logger names to distinguish them.
 log_level = "INFO"
@@ -283,65 +300,66 @@ log_cli = true
 log_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s (%(filename)s:%(lineno)s)"
 log_date_format = "%Y-%m-%d %H:%M:%S"
 
+# -------------------------- Doctest options ----------------------------------
 # These are used when running `pytest --doctest-modules src/`.
 doctest_optionflags = [
   "DONT_ACCEPT_TRUE_FOR_1", # Makes doctest not consider 1 to equal True.
   "NORMALIZE_WHITESPACE",   # Ignores newlines, so we can wrap expected output.
 ]
 
+# -------------------------- Test markers -------------------------------------
 # Create markers for very slow, network-dependent, or interactive tests.
+# To run only unit tests, use `-m 'not (slow or net or ux)'`.
 markers = [
   "slow: marks tests that take a long time to run (select with `-m slow`)",
   "net: marks tests that require network access (select with `-m net`)",
-  "ux: marks tests that require manual input such as in-browser (select with `-m ux`)",
+  "ux: marks tests that require live interaction (select with `-m ux`)",
 ]
 
+# -------------------------- Pytest CLI args ----------------------------------
 # `coverage` stops recursing after it finds one dir without an __init__.py
 # So, if it finds `src/java-app` before `src/pyapp`, it won't find `pyapp`.
 # So, we need to specify which directory to test via `--cov=src/{pkg}`.
+#
 # The `--cov-*` options are handled by pytest-cov.
-# `--import-mode=importlib` is recommended but requires test classes to have unique names.
-# `-r` controls the summary columns:
-# (f)ailed, (E)rror, (s)kipped, (x)failed, (X|p)passed, (p)assed
-# `--quiet` hides 'rootdir', 'testpaths', etc.
-# ---
-# :tyranno: addopts = """
-# :tyranno:   --cov=src/${{.namespace}} \
+# `--import-mode=importlib` is recommended, but it **requires that test classes have unique names.**
+#
+# `--quiet` just hides ouptut about 'rootdir', 'testpaths', etc.
+# Add `--full-trace --showlocals` to get more info.
 addopts = """
-  --cov=src/rcsbchemsearch \
+  --cov=src \
   --cov-report json:.coverage.json \
   --cov-report term \
   --cov-config=pyproject.toml \
   --import-mode=importlib \
   --strict-config \
   --strict-markers \
-  --quiet
+  --quiet \
+  --durations=3 \
+  --durations-min=0.5 \
 """
 
-# To run only unit tests, run:
-# `-m 'not (slow or net or ux)'`
-# To show the slowest tests, add:
-# `--durations=5 --durations-min=0.1`
-# Other useful options to add:
-# `--verbose`     : Show full test names.
-# `--full-trace`  : Show full stack traces.
-# `--showlocals`  : Show local variables.
-
 #
-#########################################################################################
-#                                 [tool.coverage]
-#########################################################################################
+###################################################################################################
+#                                        [tool.coverage]
+###################################################################################################
 
+#============================ [tool.coverage.run] ============================#
 [tool.coverage.run]
 data_file = ".coverage.json"
 branch = true # Quantify the % coverage of execution branches.
-relative_files = true
+relative_files = true # See <https://coverage.readthedocs.io/en/7.6.12/config.html#run-relative-files>
+omit = [
+  "**/__main__.py",
+]
 
+#============================ [tool.coverage.paths] ==========================#
 [tool.coverage.paths]
 source = ["src/"]
 
+#============================ [tool.coverage.report] =========================#
 [tool.coverage.report]
-#fail_under = 90 # % coverage required
+fail_under = 2 # Require % coverage to ensure config is correct
 format = "markdown"
 precision = 1 # n decimal points for coverage %
 show_missing = true
@@ -356,58 +374,52 @@ exclude_also = [
 ]
 
 #
-#########################################################################################
-#                                       [tool.pyright]
-#########################################################################################
+###################################################################################################
+#                                        [tool.pyright]
+###################################################################################################
 
 [tool.pyright]
 
-include = ["src/**/*.py", "tests/**/*.py"]
-strictListInference = true
-strictDictionaryInference = true
-strictSetInference = true
-strictParameterNoneValue = false
-deprecateTypingAliases = true
-enableReachabilityAnalysis = true
+include = [
+  "src/**/*.py",
+  "tests/**/*.py",
+]
+
+# Set the typing profile.
+# The "type checking mode" sets most of the other options.
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-check-diagnostics-settings
+# `strict` sets most `strict*` options to `true` and most `report*` options to "error".
 typeCheckingMode = "strict"
+# Everything below overrides specific `typeCheckingMode` options.
+
+# Override type evaluation settings.
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md#type-evaluation-settings
+deprecateTypingAliases = true
+
+# Override reporting options.
+# Can be "none", "information", "warning", or "error.
+# https://github.com/microsoft/pyright/blob/main/docs/configuration.md#diagnostic-settings-defaults
+reportCallInDefaultInitializer = "information"
 reportImplicitOverride = "error"
 reportImportCycles = "error"
 reportMissingSuperCall = "error"
 reportPropertyTypeMismatch = "error"
 reportShadowedImports = "warning"
+reportUninitializedInstanceVariable = "warning"
 reportUnnecessaryTypeIgnoreComment = "warning"
-
-# strictness options
-disallow_any_generics = true
-disallow_subclassing_any = true
-disallow_untyped_defs = true
-warn_redundant_casts = true
-warn_no_return = true
-warn_return_any = true
-
-# misc. options
-# warn if an unreachable execution branch is found
-warn_unreachable = true
-# warn if a `# type: ignore` is unnecessary
-warn_unused_ignores = true
-# no testing 'abc' == 123
-strict_equality = true
-
-# formatting output options
-pretty = true
-show_column_numbers = true
-show_error_code_links = true
+reportUnusedCallResult = "information"
 
 #
-#########################################################################################
-#                                   [tool.tyranno]
-#########################################################################################
+###################################################################################################
+#                                        [tool.tyranno]
+###################################################################################################
 
 [tool.tyranno]
 
 # These are `.gitignore`-type patterns.
-# All trash globs are automatically excluded from targets.
-# So, e.g., `.py` files in cache dirs are never synced.
+# All `trash` globs are automatically excluded from `targets`.
+
+# Target files to sync on `tyranno sync`
 targets = [
   "/.*ignore",
   "/.editorconfig",
@@ -424,6 +436,7 @@ targets = [
   "Dockerfile",
 ]
 
+# Files to delete/trash on `tyranno clean`
 trash = [
   "*[~#$]",
   "[~#$]*",
@@ -437,15 +450,29 @@ trash = [
   "*.py[codi]",
   "__pycache__/",
   ".coverage.json",
+  ".directory",
+  ".DS_STORE",
+  "*.egg-info",
+  ".localized",
   "cython_debug",
+  "THUMBS.db",
 ]
 
+#============================ [tool.tyranno.data] ============================#
+# No keys have any special meanings.
 [tool.tyranno.data]
 vendor = "rcsb"
-frag = "${.vendor}/${project.name}"
-copyright = "Copyright ${now_utc().year}, Contributors to ${project.name}"
-doi = "10.5281/zenodo.4485186" # <<<comment out for new
-# This is the version used in CD and some CI
-default-python-version = "3.13.1"
+# :tyranno: namespace = "${{project.name|replace(@, '_', '-')|lower(@)}}"
+namespace = "rcsbchemsearch"
+# :tyranno: frag = "${{vendor}}/${{project.name}}"
+frag = "rcsb/rcsbchemsearch"
+# :tyranno: copyright = "Copyright ${{now_utc().year}}, Contributors to ${{project.name}}"
+copyright = "Copyright 2025, Contributors to rcsb-chem-search"
+# This is the version used in CD and some CI.
+# :tyranno: cicd-python-build = "${{ project.requires-python|pep440_spec_of('python', @)|pep440_spec_max(@) }}"
+cicd-python-build = "3.13.3"
+# :tyranno: cicd-python-minor = "${{ .cicd-python-build|split(@, '.')|join('.', @[0:2]) }}"
+cicd-python-minor = "3.13"
 # These are the versions to test in CI:
-python-versions = ["3.13.1"]
+# :tyranno: python-builds = ${{ project.requires-python|pep440_spec_of('python', @)|pep440_spec_max(@) }}
+python-builds = ["3.13.3"]

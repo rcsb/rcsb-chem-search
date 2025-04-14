@@ -1,32 +1,25 @@
 # SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
 # SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
 # SPDX-License-Identifier: Apache-2.0
+#
+# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
+# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
+# SPDX-License-Identifier: BSD-3-Clause
 
-# Set the labels.
-# These are standard opencontainer labels; see:
-# https://github.com/opencontainers/image-spec/blob/master/annotations.md
-# :tyranno: LABEL org.opencontainers.image.version="${{project.version}}"
-LABEL org.opencontainers.image.version="0.0.1-alpha0"
-# :tyranno: LABEL org.opencontainers.image.vendor="${{.vendor}}"
-LABEL org.opencontainers.image.vendor="dmyersturnbull"
-# :tyranno: LABEL org.opencontainers.image.title="${{project.name}}"
-LABEL org.opencontainers.image.title="sandbox-tyranno"
-# :tyranno: LABEL org.opencontainers.image.url="${{project.urls.Homepage}}"
-LABEL org.opencontainers.image.url="https://github.com/dmyersturnbull/sandbox-tyranno"
-# :tyranno: LABEL org.opencontainers.image.documentation="${{project.urls.Documentation}}"
-LABEL org.opencontainers.image.documentation="https://github.com/dmyersturnbull/sandbox-tyranno"
+# Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
 
 # Declare the core build args.
 # These must exist outside of any stage and be declared before the first FROM.
 ARG ALPINE_VERSION=""
-# :tyranno: ARG PYTHON_VERSION="${{.default-python-version.vr_minor(@)}}"
+# ::tyranno:: ARG PYTHON_VERSION="$<<.cicd.python-version>>"
 ARG PYTHON_VERSION="3.13"
 
 # -------------------- Download uv and set vars --------------------
 
 # Start the stage "builder", and download uv.
-FROM python:$PYTHON_VERSION:alpine$ALPINE_VERSION as builder
+FROM python:$PYTHON_VERSION-alpine$ALPINE_VERSION AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+RUN apk add --no-cache bash
 SHELL ["/bin/bash", "-c"]
 
 # Environment variables
@@ -42,6 +35,21 @@ ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=yes
 # Alternative we're not using:
 # ENV UV_NO_CACHE=yes
+ENV UV_COMPILE_BYTECODE=1
+
+# -------------------- Set the labels --------------------
+# These are standard opencontainer labels; see:
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+# ::tyranno:: LABEL org.opencontainers.image.version="$<<project.version>>"
+LABEL org.opencontainers.image.version="0.0.1-alpha0"
+# ::tyranno:: LABEL org.opencontainers.image.vendor="$<<.vendor>>"
+LABEL org.opencontainers.image.vendor="dmyersturnbull"
+# ::tyranno:: LABEL org.opencontainers.image.title="$<<project.name>>"
+LABEL org.opencontainers.image.title="tyranno-sandbox"
+# ::tyranno:: LABEL org.opencontainers.image.url="$<<project.urls.Homepage>>"
+LABEL org.opencontainers.image.url="https://github.com/dmyersturnbull/tyranno-sandbox"
+# ::tyranno:: LABEL org.opencontainers.image.documentation="$<<project.urls.Documentation>>"
+LABEL org.opencontainers.image.documentation="https://github.com/dmyersturnbull/tyranno-sandbox"
 
 # -------------------- Install the project --------------------
 
@@ -66,38 +74,18 @@ RUN \
   uv sync --locked --no-dev --no-editable
 
 # ******************** In production only! ************************
-#
-# -------------------- Run in a fresh stage --------------------
+# -------------------- Run in a fresh stage -----------------------
 # Make a new stage that contains only the final venv.
 # FROM python:$PYTHON_VERSION:alpine$ALPINE_VERSION
 # COPY --from=builder --chown=app:app /var/app/.venv /var/app/.venv
 # *****************************************************************
+
+# ENTRYPOINT ["/var/app/.venv/bin/rcsbchemsearch-etl"]
 
 # Expose HTTP 1.1 & 2.0 on TCP/80, HTTPS 1.1 & 2.0 on TCP/443, and HTTP/3 on UDP/443.
 EXPOSE 80
 EXPOSE 443
 EXPOSE 443/udp
 
-ENTRYPOINT [
-  "/var/app/.venv/bin/hypercorn",
-  "sandbox_tyranno.api:app"
-]
-CMD [
-  "--bind",
-  "[::]:80",
-  "--bind",
-  "[::]:443",
-  "--quic-bind",
-  "[::]:443"
-]
-
-ARG HEALTHCHECK_INTERVAL=5m
-ARG HEALTHCHECK_TIMEOUT=3s
-ARG HEALTHCHECK_START_PERIOD=5s
-
-# Ubuntu curl doesn't support --http3 yet
-HEALTHCHECK \
-  --interval=$HEALTHCHECK_INTERVAL \
-  --timeout=$HEALTHCHECK_TIMEOUT \
-  --start-period=$HEALTHCHECK_START_PERIOD \
-  CMD curl --fail --http2-prior-knowledge http://localhost/ || exit 1
+ENTRYPOINT ["/var/app/.venv/bin/hypercorn", "rcsbchemsearch.api:app"]
+CMD ["--bind", "[::]:80", "--bind", "[::]:443", "--quic-bind", "[::]:443"]

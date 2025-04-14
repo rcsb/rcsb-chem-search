@@ -1,25 +1,24 @@
-import dataclasses
 import enum
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
-from enum import StrEnum
-from typing import Self, Protocol
+from enum import Enum
 
 from rdkit import Chem
 from rdkit.Chem import Mol
 
-from rcsbchemsearch.errors import MoleculeBuildError
+from rcsbchemsearch.core import StructureData
+from rcsbchemsearch.core.errors import MoleculeBuildError
 
 
-class InputType(StrEnum):
+class InputType(Enum):
     INCHI = "InChI"
     INCHIKEY = "InChI Key"
     SMILES = "SMILES"
     RCSB_ID = "rcsb id"
 
 
-class OpStatus(enum.StrEnum):
+class OpStatus(Enum):
     """
     The success, failure, or other outcome of an attempted operation.
     Note that this may not reflect the final state of the operation, or whether results are available.
@@ -35,6 +34,7 @@ class OpStatus(enum.StrEnum):
     Suppose an operation is applied to 100 items, and each is interrupted by an error.
     Then, even though no results are available, `HAD_ERRORS` is the correct status.
     """
+
     COMPLETED = enum.auto()
     HALTED = enum.auto()
     HAD_ERRORS = enum.auto()
@@ -45,40 +45,25 @@ class OpStatus(enum.StrEnum):
         return self in (OpStatus.COMPLETED, OpStatus.HAD_ERRORS, OpStatus.HALTED)
 
 
-class HasScore(Protocol):
-    score: int
-
-
-# @D.describe("{<key>} <{<smiles>}>")
 @dataclass(slots=True, frozen=True)
-class Molecule:
-    key: str
+class Structure(StructureData):
     mol: Mol
-    smiles: str
-    inchi: str
-    inchikey: str
-
-    @property
-    def as_dict(self) -> dict[str, str]:
-        return {k: v for k, v in dataclasses.asdict(self).items() if k != "mol"}
 
 
 # @D.describe("{<key>} <{<smiles>}>, score={<score>}")
 @dataclass(slots=True, frozen=True)
-class Tautomer(Molecule):
+class Tautomer(Structure):
     score: int
 
 
 @dataclass(slots=True, frozen=True, eq=False)
 class MolFactory:
-
     def new_mol(self, input_str: str) -> Mol:
         raise NotImplementedError()
 
 
 @dataclass(slots=True, frozen=True, eq=False)
 class SimpleMolFactory(MolFactory):
-
     def new_mol(self, input_str: str) -> Mol:
         try:
             if input_str.startswith("InChI="):
@@ -90,26 +75,24 @@ class SimpleMolFactory(MolFactory):
 
 @dataclass(slots=True, frozen=True, eq=False)
 class MoleculeFactory:
-
-    def of(self, mol: Mol | str, key: str | None = None) -> Molecule:
+    def of(self, mol: Mol | str, key: str | None = None) -> Structure:
         raise NotImplementedError()
 
 
 @dataclass(slots=True, frozen=True, eq=False)
 class SimpleMoleculeFactory(MoleculeFactory):
-
     mol_factory: MolFactory
 
-    def of(self, mol: Mol | str, key: str | None = None) -> Molecule:
+    def of(self, mol: Mol | str, key: str | None = None) -> Structure:
         if isinstance(mol, str):
             mol = self.mol_factory.new_mol(mol)
         return self._to_molecule(mol, None)
 
-    def _to_molecule(self, mol: Mol, key: str | None) -> Self:
+    def _to_molecule(self, mol: Mol, key: str | None) -> Structure:
         smiles = self._try(mol, InputType.SMILES, Chem.MolToSmiles)
         inchi = self._try(mol, InputType.INCHI, Chem.MolToInchi)
         inchikey = self._try(mol, InputType.INCHIKEY, Chem.MolToInchiKey)
-        return Molecule(key if key else inchikey, mol, smiles, inchi, inchikey)
+        return Structure(key if key else inchikey, smiles, inchi, inchikey, mol)
 
     @staticmethod
     def _try(mol: Mol, op_name: InputType, op: Callable[[Mol], str]) -> str:

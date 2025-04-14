@@ -15,14 +15,12 @@ from rdkit import Chem, RDLogger, rdBase
 from rdkit.Chem import Mol
 
 # from rdkit.rdBase import BlockLogs
+# rdBase.LogToPythonStderr()
 
 __all__ = [
     "RdkitLogLevel",
     "RdkitLogging",
 ]
-
-
-# rdBase.LogToPythonStderr()
 
 
 class RdkitSeed:
@@ -45,6 +43,8 @@ class _ProblemCapture:
 
 
 class RdkitLogLevel(Enum):
+    """Log levels from rdkit and how they map to standard `logging`."""
+
     DEBUG = RDLogger.DEBUG
     INFO = RDLogger.INFO
     WARNING = RDLogger.WARNING
@@ -87,9 +87,9 @@ class _RdkitLogging:
         rd_logger = RDLogger.logger()
         self.level = RdkitLogLevel.from_rdkit(level)
         # In case no logging is enabled, it will be set to critical.
-        level_list = rdBase.LogStatus().split("\n") + ["rdApp.critical:enabled"]
+        level_list = [*rdBase.LogStatus().split("\n"), "rdApp.critical:enabled"]
         rd_logger.setLevel(level.value)
-        init_level = [lev.split(":")[0] for lev in level_list if "enabled" in lev.lower()][0]
+        init_level = next(lev.split(":")[0] for lev in level_list if "enabled" in lev.lower())
         yield
         rd_logger.setLevel(getattr(RDLogger, init_level.split(".")[1].upper()))  # Restore the level
 

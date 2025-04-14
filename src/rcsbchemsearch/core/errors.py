@@ -1,16 +1,25 @@
+"""
+Exceptions for rcsbchemsearch.
+"""
+# ruff: noqa: TC001, TC003  # This noqa shouldn't be needed
+
+from __future__ import annotations
+
 import functools
 import traceback
 from collections.abc import Callable as Fn
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from traceback import StackSummary
-from typing import Concatenate as Cat
+from types import ModuleType
+from typing import Concatenate as Ct
 
-from . import Molecule
-from .json_utils import JsonObject
+from rcsbchemsearch.core import StructureData
+from rcsbchemsearch.core.json_utils import JsonObject
 
-__all__ = ["BaseChemError", "MoleculeBuildError", "MoleculeOperationError"]
+__all__ = ["AnyChemError", "MoleculeBuildError", "MoleculeOperationError"]
 
 
 def decorator[**P, R](fn: Fn[P, R]) -> Fn[P, R]:
@@ -23,7 +32,7 @@ def decorator[**P, R](fn: Fn[P, R]) -> Fn[P, R]:
 
 
 @dataclass(frozen=True, slots=True)
-class AppError(Exception):
+class AnyAppError(Exception):
     """An error from this app."""
 
     def properties(self) -> JsonObject:
@@ -32,26 +41,26 @@ class AppError(Exception):
 
 
 @dataclass(frozen=True, slots=True)
-class BaseChemError(AppError):
+class AnyChemError(AnyAppError):
     """An error relating to rdkit or chemistry."""
 
 
 @dataclass(frozen=True, slots=True)
-class MoleculeOperationError(BaseChemError):
-    """An error caused by failure to process"""
+class MoleculeOperationError(AnyChemError):
+    """An error caused by failure to perform some operation on an already-built molecule."""
 
-    molecule: Molecule
+    molecule: StructureData
     op_name: str = ""
     detail: str = ""
 
     def __str__(self) -> str:
-        op_name = self.op_name if self.op_name else "process"
+        op_name = self.op_name or "process"
         detail = f": {self.detail}" if self.detail else ""
         return f"Failed to {op_name} molecule {self.molecule}{detail}."
 
 
 @dataclass(frozen=True, slots=True)
-class MoleculeBuildError(BaseChemError):
+class MoleculeBuildError(AnyChemError):
     input_str: str
     detail: str = ""
 
@@ -63,7 +72,7 @@ class MoleculeBuildError(BaseChemError):
 class _ErrorUtils:
     """"""
 
-    def is_rdkit_error(self, exception: BaseException) -> bool:
+    def is_rdkit_error(self, exception: Exception) -> bool:
         """
         Determines whether an exception is an RDKit error.
 
@@ -72,7 +81,7 @@ class _ErrorUtils:
         """
         return self.is_package_in_traceback(exception, "rdkit")
 
-    def is_package_in_traceback(self, exception: BaseException, name: str) -> bool:
+    def is_package_in_traceback(self, exception: Exception, name: str) -> bool:
         """
         Determines whether a package is in the traceback of an exception.
 
@@ -90,7 +99,7 @@ class _ErrorUtils:
         return any(name in frame.filename for frame in summary)
 
     @contextmanager
-    def rdkit_op(self, molecule: Molecule, *, name: str = "") -> Generator[None]:
+    def rdkit_op(self, molecule: StructureData, *, name: str = "") -> Generator[None]:
         """
         Wraps a Python block to catch any RDKit error and wrap it in a `MoleculeOperationError`.
 
@@ -108,9 +117,9 @@ class _ErrorUtils:
             raise e
 
     @decorator
-    def wrap_rdkit_op[**P, R](self, *, name: str = "") -> Fn[Fn[Cat[Molecule, P], R], Fn[Cat[Molecule, P], R]]:
+    def wrap_rdkit_op[**P, R](self, *, name: str = "") -> Fn[Fn[Ct[StructureData, P], R], Fn[Ct[StructureData, P], R]]:
         """
-        Wraps a function to catch and re-raise RDKit errors as MoleculeOpErrors.
+        Wraps a function to catch and wrap any RDKit error into an MoleculeOperationError.
 
         Example:
             ```python
@@ -131,13 +140,13 @@ class _ErrorUtils:
         # There's no way around this, so we can't use `PMR` in the outer signature.
         # Sometimes you need to teach Python a lesson / bend it until it thinks it's Scala.
         # This isn't one of those times.
-        type PMR = Fn[Cat[Molecule, P], R]
+        type PMR = Fn[Ct[StructureData, P], R]
 
         def wrapper(fn: PMR) -> PMR:
             real_op_name: str = name or getattr(fn, "__name__", "")
 
             @functools.wraps(fn)
-            def wrapped(molecule: Molecule, *args: P.args, **kwargs: P.kwargs) -> R:
+            def wrapped(molecule: StructureData, *args: P.args, **kwargs: P.kwargs) -> R:
                 try:
                     return fn(molecule, *args, **kwargs)
                 except Exception as e:
@@ -151,3 +160,41 @@ class _ErrorUtils:
 
 
 ErrorUtils = _ErrorUtils()
+
+def inner():
+    raise AnyAppError()
+
+def outer():
+    try:
+        inner()
+    except AnyAppError:
+        raise AnyAppError()
+
+
+
+import sysconfig
+
+
+def run():
+    pkgs_dir = Path(sysconfig.get_paths()["purelib"]).resolve(strict=True)
+    print(pkgs_dir)
+    import inspect
+    import importlib.util
+    spec = importlib.util.find_spec("rdkit")
+    pkg_dir = Path(spec.origin).resolve(strict=True).parent.relative_to(pkgs_dir)
+    pkg_mod = importlib.util.module_from_spec(spec)
+    print(spec)
+    print(pkg_dir)
+    try:
+        inner()
+    except Exception as exception:
+
+        mod: ModuleType = inspect.getmodule(exception)
+        summary: StackSummary = traceback.extract_tb(exception.__traceback__)
+        for frame in summary:
+            path = Path(frame.filename).resolve(strict=True)
+            if path.is_relative_to(pkg_dir):
+                print(f"Is <{path}> in <{pkg_dir}>?")
+            #print(frame.filename, frame)
+
+run()

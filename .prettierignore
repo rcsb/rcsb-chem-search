@@ -3,11 +3,13 @@
 # Note: Patterns are absolute, like `.dockerignore` but in contrast to `.gitignore`.
 
 # Conda recipes aren't real YAML files.
-recipes/*.yaml
+/recipes/*.yaml
 
 # Helm chart templates aren't real YAML files.
-**/chart/templates/*.yaml
-**/helm/**/templates/*.yaml
+/**/helm/**/templates/*.yaml
+/**/chart/**/templates/*.yaml
+/**/charts/**/templates/*.yaml
+/**/helm-charts/**/templates/*.yaml
 
 # SVG files should probably be minified instead.
-**/*.svg
+/**/*.svg
