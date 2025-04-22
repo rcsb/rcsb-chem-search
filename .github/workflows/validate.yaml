@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+#
+# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
+# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
+
+# Verifies that we can start the release process when a tag `v<major>.<minor>.<build>` is pushed.
+name: Validate-release
+run-name: Validate release of ${{ github.ref_name }} (triggered by ${{ github.triggering_actor }})
+
+on:
+  push:
+    tags:
+      # ::tyranno:: - '$<<.cicd.git-release-regex>>'
+      - '^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)$'
+
+permissions:
+  contents: write
+
+concurrency:
+  # In contrast, the `publish` workflow uses the constant group `publish`
+  # (with `cancel-in-progress` set to FALSE).
+  # It's safe to cancel runs of `validate`, but not of `publish`.
+  # We'll let runs proceed here, then bottle up against the start of `publish`.
+  group: validate-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  check-hooks:
+    uses: ./.github/workflows/_check-hooks.yaml
+  run-tests:
+    uses: ./.github/workflows/_run-pytest.yaml
+  check-security:
+    uses: ./.github/workflows/_check-ruff.yaml
+    with:
+      rules: S
+  build-dist:
+    needs:
+      - check-hooks
+      - run-tests
+      - check-security
+    uses: .github/workflows/_build_dist.yaml

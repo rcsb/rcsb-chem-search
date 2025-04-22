@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+
+# Checks that the Docker image is buildable on PRs with relevant changes.
+name: PR-check-Docker
+run-name: Check Docker on PR ${{ github.event.pull_request.number }} by ${{ github.event.pull_request.user.login }}
+
+on:
+  pull_request:
+    types:
+      - review_requested
+    paths:
+      - src/**
+      - pyproject.toml
+      - Dockerfile
+      - .dockerignore
+
+concurrency:
+  group: check-docker-${{ github.ref_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check-docker:
+    uses: .github/workflows/_check-docker.yaml

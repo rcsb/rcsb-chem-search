@@ -65,42 +65,79 @@ compression = [
   "zstd>=1.5.6",
 ]
 
-# -------------------------- scriptsURIs --------------------------------------
+# -------------------------- scripts --------------------------------------
 [project.scripts]
-# :tyranno: ${{project.name}} = "${{project.name}}.__main__:cli"
+# ::tyranno:: $<<project.name>> = "$<<project.name>>.__main__:cli"
 chem-search-etl = "rcsbchemsearch.__main__:cli"
 
 # -------------------------- project URIs -------------------------------------
 [project.urls]
-# :tyranno: "https://github.com/${{.frag}}"
+# ::tyranno:: "https://github.com/$<<.frag>>"
 Homepage = "https://github.com/rcsb/rcsb-chem-search"
-# :tyranno: "https://github.com/${{.frag}}"
+# ::tyranno:: "https://github.com/$<<.frag>>"
 Source = "https://github.com/rcsb/rcsb-chem-search"
-# :tyranno: Documentation = https://${{.vendor}}.github.io/${{project.name}}
+# ::tyranno:: Documentation = https://$<<.vendor>>.github.io/$<<project.name>>
 Documentation = "https://github.com/rcsb/rcsb-chem-search"
-# :tyranno: "Tracker" = ${{.home}}/issues
+# ::tyranno:: "Tracker" = $<<.home>>/issues
 Tracker = "https://github.com/rcsb/rcsb-chem-search/issues"
-# :tyranno: Download = "https://pypi.org/project/${{project.name}}"
+# ::tyranno:: Download = "https://pypi.org/project/$<<project.name>>"
 Download = "https://pypi.org/project/rcsb-chem-search/"
-# :tyranno: "Release Notes" = "https://github.com/${{.frag}}/releases"
+# ::tyranno:: "Release Notes" = "https://github.com/$<<.frag>>/releases"
 "Release Notes" = "https://github.com/rcsb/rcsb-chem-search/releases"
 
 #
-#########################################################################################
-#                                          [dependency-groups]
-#########################################################################################
+###################################################################################################
+#                                        [dependency-groups]
+###################################################################################################
 
 # See https://docs.astral.sh/uv/concepts/projects/dependencies/#dependency-groups
 [dependency-groups]
 
+# `--only-dev` literally means only the `dev` group, so include everything.
+# Also define groups for use in CI.
 dev = [
-  "coverage[toml]>=7.6.10",
-  "pre-commit>=4.0.1",
-  "pyright[nodejs]>=1.1",
+  "coverage[toml]>=7.8",
+  "deal>=4.24",
+  "hypofuzz>=25.4",
+  "hypothesis[cli,codemods]>=6.130",
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.6",
+  "mkdocs-minify-plugin>=0.8",
+  "mkdocs-literate-nav>=0.6",
+  "mkdocs-api-autonav>=0.2",
+  "mkdocstrings[python]>=0.29",
+  "pre-commit>=4.2",
+  "pyright[nodejs]>=1.1.350",
   "pytest>=8.3",
-  "pytest-cov>=6.0",
-  "ruff>=0.11.5",
+  "pytest-cov>=6.1",
+  "pytest-datadir>=1.6",
+  "ruff>=0.11.6",
 ]
+test = [
+  "coverage[toml]>=7.8",
+  "deal>=4.24",
+  "hypofuzz>=25.4",
+  "hypothesis[cli,codemods]>=6.130",
+  "pytest>=8.3",
+  "pytest-cov>=6.1",
+  "pytest-datadir>=1.6",
+]
+docs = [
+  "mkdocs>=1.6",
+  "mkdocs-material>=9.6",
+  "mkdocs-minify-plugin>=0.8",
+  "mkdocs-literate-nav>=0.6",
+  "mkdocs-api-autonav>=0.2",
+  "mkdocstrings[python]>=0.29",
+]
+# Detect and mark problems; shouldn't make changes (albeit `ruff check --fix` works).
+check = [
+  "pre-commit>=4.2",
+  "pyright[nodejs]>=1.1.350",
+  "ruff>=0.11.6",
+]
+ruff = ["ruff>=0.11.6"]
+precommit = ["pre-commit>=4.2"]
 
 #
 ###################################################################################################
@@ -176,7 +213,7 @@ select = [
   "E7",       # == True, bare except, lambda assignment, 'l' in names, etc.
   "E9",       # can't lint -- syntax error, etc.
   "EM",       # flake8-errmsg
-  #"ERA",     # eradicate (commented-out code) //DISABLED: catches code in comments, etc.//
+  #"ERA",      # eradicate (commented-out code) //DISABLED: error-prone//
   #"EXE",     # flake8-executable //DISABLED: pre-commit shebang rules instead//
   "F",        # pyflakes
   "FA",       # flake8-future-annotations
@@ -220,7 +257,6 @@ select = [
   "TC005",    # remove empty TYPE_CHECKING blocks
   "TC008",    # remove quotes from type aliases
   #"TD",      # flake8-to*do //DISABLED: bans fix*me, needs specific syntax, nitpicky//
-  #"TC",      # flake8-type-checking
   "TID",      # flake8-tidy-imports (bans relative imports)
   "TRY",      # tryceratops (try-except-raise)
   "UP",       # pyupgrade
@@ -238,13 +274,16 @@ ignore = [
   "RUF002",   # confusable characters
   "RUF003",   # confusable characters
   "PLC0415",  # imports at top (sometimes want lazy import)
+  "RUF021",   # demands parentheses in `or (x and y)`
 ]
 
 # -------------------------- Ruff unfixable rules -----------------------------
 unfixable = [
+  "ERA001",   # commented-out code (not autofixable currently, but just in case)
   "F841",     # unused variable
   "SIM112",   # uncapitalized env var
   "RUF027",   # possible f-string -- can make mistakes
+  "RUF102",   # invalid noqa
 ]
 
 # -------------------------- Ruff delegated options ---------------------------
@@ -252,6 +291,7 @@ flake8-bandit.check-typed-exception = true
 pydocstyle.convention = "google"
 flake8-tidy-imports.ban-relative-imports = "all"
 isort.detect-same-package = false # Use `tool.ruff.src` instead.
+isort.split-on-trailing-comma = false
 
 # -------------------------- delegated pylint options -------------------------
 [tool.ruff.lint.pylint]
@@ -273,7 +313,6 @@ allow-dunder-method-names = ["__rich_repr__"] # allow custom dunders
   "S108",    # harcoded temp file
   "TID252",  # relative import
 ]
-
 #
 ###################################################################################################
 #                                        [tool.pytest]
@@ -281,15 +320,20 @@ allow-dunder-method-names = ["__rich_repr__"] # allow custom dunders
 
 [tool.pytest.ini_options] # pending `[tool.pytest]`
 
+# ******************************* Notes for running tests ******************************************
+#
+# - When running tests, the working directory should be the project root.
+# - pytest-cov is not compatible with the PyCharm/IntelliJ debugger.
+#   See https://www.jetbrains.com/help/pycharm/run-debug-configuration-py-test.html
+#
+# **************************************************************************************************
+
 # This pytest 7+ option avoids repeating the package name in various options.
 pythonpath = ["src/"]
 
 # Set the default path to `tests/` so that it can be omitted on CLI.
-# Don't use `.` or `["tests/", "src/"]`:
-# That would mistakenly pick up `src/**/Test*.py`.
-# Any doctests in `src/**/*.py` won't be found.
-# Doctests must be run manually like this:
-# `pytest --doctest-modules src/`
+# Don't use `.` or `["tests/", "src/"]`, which would run `src/**/test*.py`.
+# For doctests, run `pytest --doctest-modules src/`
 testpaths = ["tests/"]
 
 # -------------------------- Logging config -----------------------------------
@@ -314,29 +358,23 @@ markers = [
   "slow: marks tests that take a long time to run (select with `-m slow`)",
   "net: marks tests that require network access (select with `-m net`)",
   "ux: marks tests that require live interaction (select with `-m ux`)",
+  "property: marks tests that use Hypothesis or otherwise generate test data (select with `-m property`)",
 ]
 
 # -------------------------- Pytest CLI args ----------------------------------
-# `coverage` stops recursing after it finds one dir without an __init__.py
-# So, if it finds `src/java-app` before `src/pyapp`, it won't find `pyapp`.
-# So, we need to specify which directory to test via `--cov=src/{pkg}`.
-#
 # The `--cov-*` options are handled by pytest-cov.
-# `--import-mode=importlib` is recommended, but it **requires that test classes have unique names.**
-#
+# `--import-mode=importlib` is recommended but **requires test classes to have unique names**.
 # `--quiet` just hides ouptut about 'rootdir', 'testpaths', etc.
-# Add `--full-trace --showlocals` to get more info.
 addopts = """
   --cov=src \
   --cov-report json:.coverage.json \
-  --cov-report term \
+  --cov-report=term \
   --cov-config=pyproject.toml \
   --import-mode=importlib \
   --strict-config \
   --strict-markers \
   --quiet \
-  --durations=3 \
-  --durations-min=0.5 \
+  --tb=short \
 """
 
 #
@@ -417,7 +455,7 @@ reportUnusedCallResult = "information"
 [tool.tyranno]
 
 # These are `.gitignore`-type patterns.
-# All `trash` globs are automatically excluded from `targets`.
+# All `.gitignore`-ed files are automatically excluded.`
 
 # Target files to sync on `tyranno sync`
 targets = [
@@ -436,43 +474,13 @@ targets = [
   "Dockerfile",
 ]
 
-# Files to delete/trash on `tyranno clean`
-trash = [
-  "*[~#$]",
-  "[~#$]*",
-  ".[~#$]*",
-  "*[.~]bak",
-  "*[.~]swp",
-  "*[.~]temp",
-  "*[.~]tmp",
-  ".*[_-]cache",
-  "*.class",
-  "*.py[codi]",
-  "__pycache__/",
-  ".coverage.json",
-  ".directory",
-  ".DS_STORE",
-  "*.egg-info",
-  ".localized",
-  "cython_debug",
-  "THUMBS.db",
-]
-
 #============================ [tool.tyranno.data] ============================#
 # No keys have any special meanings.
 [tool.tyranno.data]
 vendor = "rcsb"
-# :tyranno: namespace = "${{project.name|replace(@, '_', '-')|lower(@)}}"
+# ::tyranno:: namespace = "$<<project.name|replace(@, '_', '-')|lower(@)>>"
 namespace = "rcsbchemsearch"
-# :tyranno: frag = "${{vendor}}/${{project.name}}"
+# ::tyranno:: frag = "$<<vendor>>/$<<project.name>>"
 frag = "rcsb/rcsbchemsearch"
-# :tyranno: copyright = "Copyright ${{now_utc().year}}, Contributors to ${{project.name}}"
+# ::tyranno:: copyright = "Copyright $<<now_utc().year>>, Contributors to $<<project.name>>"
 copyright = "Copyright 2025, Contributors to rcsb-chem-search"
-# This is the version used in CD and some CI.
-# :tyranno: cicd-python-build = "${{ project.requires-python|pep440_spec_of('python', @)|pep440_spec_max(@) }}"
-cicd-python-build = "3.13.3"
-# :tyranno: cicd-python-minor = "${{ .cicd-python-build|split(@, '.')|join('.', @[0:2]) }}"
-cicd-python-minor = "3.13"
-# These are the versions to test in CI:
-# :tyranno: python-builds = ${{ project.requires-python|pep440_spec_of('python', @)|pep440_spec_max(@) }}
-python-builds = ["3.13.3"]

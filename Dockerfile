@@ -41,15 +41,15 @@ ENV UV_COMPILE_BYTECODE=1
 # These are standard opencontainer labels; see:
 # https://github.com/opencontainers/image-spec/blob/master/annotations.md
 # ::tyranno:: LABEL org.opencontainers.image.version="$<<project.version>>"
-LABEL org.opencontainers.image.version="0.0.1-alpha0"
+LABEL org.opencontainers.image.version="0.0.1"
 # ::tyranno:: LABEL org.opencontainers.image.vendor="$<<.vendor>>"
 LABEL org.opencontainers.image.vendor="dmyersturnbull"
 # ::tyranno:: LABEL org.opencontainers.image.title="$<<project.name>>"
-LABEL org.opencontainers.image.title="tyranno-sandbox"
+LABEL org.opencontainers.image.title="rcsb-chem-search"
 # ::tyranno:: LABEL org.opencontainers.image.url="$<<project.urls.Homepage>>"
-LABEL org.opencontainers.image.url="https://github.com/dmyersturnbull/tyranno-sandbox"
+LABEL org.opencontainers.image.url="https://github.com/dmyersturnbull/rcsb-chem-search"
 # ::tyranno:: LABEL org.opencontainers.image.documentation="$<<project.urls.Documentation>>"
-LABEL org.opencontainers.image.documentation="https://github.com/dmyersturnbull/tyranno-sandbox"
+LABEL org.opencontainers.image.documentation="https://github.com/dmyersturnbull/trcsb-chem-search"
 
 # -------------------- Install the project --------------------
 

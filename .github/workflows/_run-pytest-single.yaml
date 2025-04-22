@@ -1,0 +1,60 @@
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+
+# "Function" workflow that runs pytest for a single OS and Python version.
+# Normally run by `_run-pytest`.
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        description: The branch or tag
+      os:
+        type: string
+        required: true
+      python:
+        type: string
+        required: true
+      markers:
+        type: string
+        default: not ux
+      retention-days:
+        type: number
+        default: 0
+
+env:
+  REF: ${{ inputs.ref || github.ref_name }}
+
+jobs:
+  run-tests:
+    name: Test ${{ env.REF }} on ${{ inputs.os }}, Python ${{ inputs.python }}
+    runs-on: ${{ inputs.os }}
+    env:
+      UV_NO_SYNC: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "${{ inputs.python }}"
+      - name: Install dependencies and run tests
+        run: |
+          uv sync --locked --exact --only-group test || exit $?
+          if [[ -n "${{ inputs.markers }}" ]]; then
+            uv run pytest -m "${{ inputs.markers }}" || exit $?
+          else
+            uv run pytest || exit $?
+          fi
+      - name: Store coverage report
+        if: ${{ inputs.retention-days > 0 }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ env.REF }}-${{ inputs.os }}-${{ inputs.python }}
+          include-hidden-files: true
+          path: .coverage.json
+          compression-level: 8 # highly compressible
+          if-no-files-found: error
+          retention-days: ${{ inputs.retention-days }}

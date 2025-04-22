@@ -9,16 +9,18 @@
 # Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
 
 # A short description of the repository that will show up on GitHub
-# :tyranno: description: ${{project.description}}
+# ::tyranno:: description: $<<project.description>>
 description: Backend REST API supporting chemical similarity searches on RCSB PDB chemical components.
-# :tyranno: homepage: ${{project.urls.Homepage}}
+# ::tyranno:: homepage: $<<project.urls.Homepage>>
 homepage: https://github.com/rcsb/rcsb-chem-search
-# :tyranno: topics: ${{project.keywords}}
+# ::tyranno:: topics: $<<project.keywords>>
 topics:
+  # :tyranno-start: $<<project.keywords[*].unquote(@)|yaml_long(@)>>
   - cheminformatics
   - search
   - rcsb
   - pdb
+  # ::tyranno-end::
 
 labels:
   - name: "breaking"
@@ -57,6 +59,9 @@ labels:
   - name: "priority: 4-critical"
     description: "🟥 Must be fixed ASAP"
     color: "#f06600"
+  - name: "question"
+    description: "💬 Question or discussion (issues only)"
+    color: "#8800ff"
   - name: "state: awaiting triage"
     description: "🚦 Awaiting triage"
     color: "#f0f0f0"
@@ -108,18 +113,6 @@ labels:
   - name: "type: test"
     description: "🚨 Addition or modification of tests"
     color: "#90e0ff"
-  # ::: potentially useful labels :::
-  #- name: "bookmark"
-  # description: "🔖 Important for reference"
-  # color: "#ffff44"
-  # ::: `chore` has no apparent use :::
-  #- name: "type: chore"
-  #  description: "️🧹 Other type of change"
-  #  color: "#90e0ff"
-  # ::: examples of scopes :::
-  #- name: "scope: api"
-  #  description: "🧩 Plugins"
-  #  color: "#009000"
-  #- name: "scope: i18n"
-  #  description: "🌐 Internationalization"
-  #  color: "#009000"
+  - name: "scope: docker"
+    description: "“🐬 Docker"
+    color: "#009000"

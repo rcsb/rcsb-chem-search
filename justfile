@@ -1,122 +1,311 @@
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+
 # https://github.com/casey/just
+# https://just.systems/man/en/
 # https://cheatography.com/linux-china/cheat-sheets/justfile/
 
-list:
-  uv run pre-commit install
-  just --list --unsorted
-
-# Delegate to `uv run --locked {}` (args → `uv run`).
-run *args:
-  uv --locked run {{args}}
-
-serve-http *args='--bind [::]:80':
-  uv --locked run hypercorn rcsbchemsearch.api:app {{args}}
-alias serve := serve-http
-
-serve-https *args='--bind [::]:80 --bind [::]:443 --quic-bind [::]:443':
-  uv --locked run hypercorn rcsbchemsearch.api:app {{args}}
+set ignore-comments	:= true
 
 ###################################################################################################
 
-# Upgrade the lock file, sync the venv, and install pre-commit hooks.
+# List available recipes.
+[group('help')]
+list:
+  @just --list
+alias help := list
+
+###################################################################################################
+
+# Sync the venv and install commit hooks.
+[group('project')]
 init:
-  uv lock --upgrade
-  uv sync --all-extras --locked
+  uv sync --all-extras --exact
   uv run pre-commit install --install-hooks --overwrite
-
-# Upgrade the lock file, sync, clean, and fix and format changes.
-refresh: lock bump-hooks fix-changes clean
-
-# Auto-upgrade pre-commit hooks (args → `pre-commit autoupdate`).
-bump-hooks *args:
-  uv run pre-commit autoupdate {{args}}
   uv run pre-commit gc
 
-# Upgrade the lock file and sync the venv.
-lock:
-  uv sync --upgrade --all-extras
+# Update the lock file, sync the venv, auto-fix + format changes, and clean.
+[group('project')]
+revamp: update-lock update-hooks fix-changes format-changes clean
 
-# Sync the venv with all extras and the 'dev' group.
+# Lock and sync the venv exactly with all extras.
+[group('project')]
 sync:
-  uv sync --all-extras
+  uv sync --all-extras --exact
+alias lock := sync
 
-# Remove temporary files, including unlinked uv cache files and old Git hooks.
-clean:
+# Update pre-commit hooks, update the lock file, and sync the venv.
+[group('project')]
+update: update-lock update-hooks
+alias upgrade := update
+
+# Update the lock file and sync the venv.
+[group('project')]
+update-lock:
+  uv sync --upgrade --all-extras --exact
+  uv run pre-commit gc
+alias upgrade-lock := update-lock
+
+# Auto-update commit hooks.
+[group('project')]
+update-hooks:
+  uv run pre-commit autoupdate
+  uv run pre-commit gc
+alias upgrade-hooks := update-hooks
+
+# Remove temporary files.
+[group('project')]
+clean: && trash
   uv cache prune
   uv run pre-commit gc
 
+# Delete temporary project files and directories.
+[group('project'), private]
+@trash:
+  - rm .coverage.json
+  - rm -r .ruff_cache/
+  - rm -r .hypothesis/
+  - rm -r **/__pycache__/
+  - rm -r **/.pytest_cache/
+  - rm -r **/cython_debug/
+  - rm -r **/*.egg-info/
+  - rm **/*.py[codi]
+
+# Delete files whose names indicate they're temporary.
+[group('project'), private]
+@trash-unsafe:
+  - rm **/.DS_Store
+  - rm **/Thumbs.db
+  - rm **/*.tmp
+  - rm **/*.temp
+  - rm **/*.swp
+  - rm **/.#*
+  - rm **/*[~\$]
+  - rm **/*.directory
+
 ###################################################################################################
 
-# Run Ruff formatter and Prettier on all files.
-format-all:
-  uv run pre-commit run ruff-format --all-files
-  uv run pre-commit run prettier --all-files
+# Format modified files (via pre-commit).
+[group('format')]
+format-changes: _format
+alias format := format-changes
 
-# Run Ruff formatter and Prettier on files with uncommitted changes.
-format-changes:
-  uv run pre-commit run ruff-format
-  uv run pre-commit run prettier
-alias format := fix-changes
+# Format ALL files (via pre-commit).
+[group('format')]
+format-all: (_format "--all-files")
+
+_format *args:
+  uv run pre-commit run end-of-file-fixer {{args}}
+  uv run pre-commit run fix-byte-order-marker {{args}}
+  uv run pre-commit run trailing-whitespace {{args}}
+  uv run pre-commit run ruff-format {{args}}
+  uv run pre-commit run prettier {{args}}
 
 ###################################################################################################
 
-# Run pre-commit hooks on all files.
-fix-all:
-  uv run pre-commit run --all-files
-
-# Run pre-commit hooks on files with uncommitted changes.
-fix-changes:
-  uv run pre-commit run
+# Fix Ruff rule violations in modified files (via pre-commit).
+[group('fix')]
+fix-changes: _fix
 alias fix := fix-changes
 
+# Fix Ruff rule violations in ALL files (via pre-commit).
+[group('fix')]
+fix-all: (_fix "--all-files")
+
+# Fix Ruff rule violations.
+[group('fix')]
+fix-ruff *args: (_fix_ruff args)
+
+# Fix Ruff rule violations, including preview, unsafe, and noqa-suppressed.
+[group('fix')]
+fix-ruff-unsafe *args: (_fix_ruff "--preview" "--unsafe-fixes" "--ignore-noqa" args)
+
+_fix *args:
+  - uv run pre-commit run ruff-fix {{args}}
+
+_fix_ruff *args:
+  - uv run ruff check --fix-only --show-fixes --statistics --output-format grouped {{args}}
+
 ###################################################################################################
 
-# Auto-fix Ruff violations (args → `ruff check`).
-fix-ruff *args:
-  uv run ruff check --fix-only --output-format grouped {{args}}
+# Check Ruff and Pyright rules (via pre-commit).
+[group('check')]
+check: check-ruff check-deal check-pyright check-links
 
-# Run with `--preview`, `--unsafe-fixes`, and `--ignore-noqa` (args → `ruff check`).
-fix-ruff-unsafe *args:
-  uv run ruff check --fix-only --output-format grouped --preview --unsafe-fixes --ignore-noqa {{args}}
-
-###################################################################################################
-
-# Find violations of Ruff lint and Pyright typing rules.
-check: check-ruff check-pyright check-links
-
-# Find violations of Ruff rules (args → `ruff check`).
+# Check Ruff rules without auto-fix.
+[group('check')]
 check-ruff *args:
-  uv run ruff check --no-fix --output-format concise {{args}}
+  uv run ruff check --no-fix --statistics --output-format grouped {{args}}
+  check-deal
 
-# Find violations of Bandit-derived `S` (security) Ruff rules (args → `ruff check`).
-check-bandit *args:
-  uv run ruff check --no-fix --output-format concise --select S {{args}}
+# Check Deal lint rules.
+[group('check'), private]
+check-deal *args:
+  uv run python -m deal lint {{args}}
 
-# Find violations of Pyright typing rules (args → `pyright`).
+# Check Ruff Bandit-derived 'S' rules.
+[group('check')]
+check-security *args:
+  just check-ruff --select S {{args}}
+
+# Check Pyright typing rules.
+[group('check')]
 check-pyright *args:
   uv run pyright {{args}}
 # Soon: https://github.com/astral-sh/ruff/issues/3893
 
-# Find broken hyperlinks in Markdown docs (args → `pre-commit run markdown-link-check`).
-check-links *args:
-  uv run pre-commit run markdown-link-check {{args}}
+# Detect broken hyperlinks (via pre-commit).
+[group('check')]
+check-links:
+  uv run pre-commit run markdown-link-check --hook-stage manual --all-files
 
 ###################################################################################################
 
-# Run all PyTest tests (args → `pytest`).
-test-all *args:
-  uv run pytest {{args}}
+# Run PyTest tests (except 'ux').
+[group('test')]
+test *args:
+  uv run --locked pytest --no-cov -m "not ux" {{args}}
 
-# Run PyTest with `-m 'not (slow or net or ux)'` (args → `pytest`).
-test-fast *args:
-  uv run pytest -m 'not (slow or net or ux)' {{args}}
+# Run PyTest tests not marked 'slow', 'net', or 'ux'.
+[group('test')]
+test-main *args:
+  uv run pytest -m "not (slow or net or ux)" --tb=short {{args}}
 
-# List PyTest markers.
-test-markers:
-  uv run pytest --markers
+# Run PyTest tests marked 'ux' (interaction or manual review).
+[group('test')]
+test-ux *args:
+  uv run --locked pytest --no-cov -m ux {{args}}
+
+# Run PyTest tests marked 'property', with Hypothesis "explain phase" enabled.
+[group('test')]
+test-property *args:
+  uv run pytest -m property --hypothesis-explain --hypothesis-show-statistics --tb=short {{args}}
+
+# Run PyTest tests (except 'ux') stepwise (starting with last failure).
+[group('test')]
+test-stepwise *args:
+  uv run --locked pytest --no-cov -m "not ux" {{args}}
+
+# Run PyTest tests marked 'ux' stepwise (starting with last failure).
+[group('test')]
+test-ux-stepwise *args:
+  uv run --locked pytest --no-cov -m ux {{args}}
+
+# Run PyTest tests (except 'ux'), showing minimal output.
+[group('test')]
+test-quietly *args:
+  uv run --locked pytest --no-cov -m "not ux" --capture=no --tb=line {{args}}
+
+# Run PyTest tests (except 'ux'), showing tracebacks, locals, and INFO.
+[group('test')]
+test-loudly *args:
+  uv run --locked pytest --no-cov -m "not ux" --showlocals --full-trace --log-level INFO {{args}}
+
+# Run PyTest tests with pdb debugger.
+[group('test')]
+test-with-pdb *args:
+  uv run --locked pytest --no-cov --pdb {{args}}
+
+# Run all PyTest tests, highlighting test durations.
+[group('test')]
+test-durations *args:
+  uv run --locked pytest --no-cov --durations=0 --durations-min=0 {{args}}
+
+# Run doctest tests (via PyTest).
+[group('test')]
+doctest *args:
+  uv run --locked pytest --doctest-modules src/ {{args}}
+
+# List PyTest fixtures.
+[group('test')]
+list-fixtures:
+  uv run pytest --fixtures
 
 ###################################################################################################
 
-# Opens a pull request on GitHub (args → `gh pr create`).
-open-pr *args:
+# Build mkdocs docs from scratch, treating warnings as errors.
+[group('docs')]
+build-docs *args:
+  uv run mkdocs build --clean --strict {{args}}
+
+# Locally serve the mkdocs docs.
+[group('docs')]
+serve-docs *args:
+  uv run mkdocs serve {{args}}
+
+###################################################################################################
+
+# `uv run --locked`.
+[group('alias')]
+run +args:
+  uv run --locked {{args}}
+
+# `uv run --locked python`.
+[group('alias')]
+python *args:
+  uv run --locked python {{args}}
+
+# `uv run --locked --module`.
+[group('alias'), private]
+call module *args:
+  uv run --locked --script file {{args}}
+
+# Runs the file as a PEP 723 script:
+# `uv run --locked --script-file`.
+[group('alias'), private]
+script file *args:
+  uv run --locked --script file {{args}}
+
+# `uv run --locked pre-commit`.
+[group('alias')]
+pre-commit *args:
+  uv run --locked pre-commit {{args}}
+
+# `uv run --locked pre-commit run {hook}`.
+[group('alias')]
+hook name *args:
+  uv run --locked pre-commit run name {{args}}
+
+# `uv run --locked ruff`.
+[group('alias')]
+ruff *args:
+  uv run --locked ruff {{args}}
+
+# `uv run --locked pytest`.
+[group('alias')]
+pytest *args:
+  uv run --locked pytest {{args}}
+
+# `uv run --locked hypothesis fuzz`.
+[group('alias')]
+fuzz *args:
+  uv run --locked hypothesis fuzz {{args}}
+
+# `uv run --locked hypothesis codemod`.
+[group('alias')]
+codemod *args:
+  uv run --locked hypothesis codemod {{args}}
+
+# `uv run --locked hypothesis write`.
+[group('alias')]
+write-test *args:
+  just _write_test {{args}}
+
+# Private alias just so `="--help"` isn't shown in help.
+_write_test *args="--help":
+  uv run --locked --module hypothesis write {{args}}
+
+# `uv run --locked --module deal`.
+[group('alias')]
+deal *args:
+  just _deal {{args}}
+
+# Private alias just so `="--help"` isn't shown in help.
+_deal *args="--help":
+  uv run --locked --module deal {{args}}
+
+# `gh pr create --fill-verbose --web --draft`.
+[group('alias')]
+gh-pr *args:
   gh pr create --fill-verbose --web --draft {{args}}
