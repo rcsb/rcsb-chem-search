@@ -41,14 +41,14 @@ jobs:
     needs: accept
     permissions:
       pages: write
-    uses: .github/workflows/_publish-github.yaml
+    uses: ./.github/workflows/_publish-github.yaml
   #  publish-pypi:
   #    needs: accept
-  #    uses: .github/workflows/_publish-pypi.yaml
+  #    uses: ./.github/workflows/_publish-pypi.yaml
   #    secrets: inherit
   #  publish-docker:
   #    needs: accept
-  #    uses: .github/workflows/_publish-docker.yaml
+  #    uses: ./.github/workflows/_publish-docker.yaml
   #    secrets: inherit
 
   deploy-helm:

@@ -43,4 +43,4 @@ jobs:
       - check-hooks
       - run-tests
       - check-security
-    uses: .github/workflows/_build_dist.yaml
+    uses: ./.github/workflows/_build_dist.yaml
