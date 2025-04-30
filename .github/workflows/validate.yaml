@@ -15,11 +15,13 @@ run-name: Validate release of ${{ github.ref_name }} (triggered by ${{ github.tr
 on:
   push:
     tags:
-      # ::tyranno:: - '$<<.cicd.git-release-regex>>'
-      - '^v(?P<major>\d+)\.(?P<minor>\d+)\.(?P<micro>\d+)$'
+      # ::tyranno:: - '^$<<.cicd.prerelease-trigger>>$'
+      - '^v[0-9]+\.[0-9]+\.[0-9]+-((alpha|beta|rc)\.)?\d+$'
+      # ::tyranno:: - '^$<<.cicd.release-trigger>>$'
+      - '^v[0-9]+\.[0-9]+\.[0-9]+$'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   # In contrast, the `publish` workflow uses the constant group `publish`
@@ -38,9 +40,14 @@ jobs:
     uses: ./.github/workflows/_check-ruff.yaml
     with:
       rules: S
+  check-docker:
+    uses: ./.github/workflows/_check-docker.yaml
   build-dist:
     needs:
       - check-hooks
       - run-tests
       - check-security
+      - check-docker
+    permissions:
+      contents: write
     uses: ./.github/workflows/_build_dist.yaml

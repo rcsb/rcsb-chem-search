@@ -15,14 +15,14 @@ on:
 jobs:
   tag-latest:
     # This job tags the release as 'latest' and 'v<x>', where <x> is its major version
-    runs-on: [self-hosted, buildchain]
+    runs-on: ubuntu-latest
     steps:
       - uses: Actions-R-Us/actions-tagger@v2
         with:
           publish_latest_tag: ${{ inputs.is-latest }}
 
   publish-github:
-    runs-on: [self-hosted, buildchain]
+    runs-on: ubuntu-latest
     steps:
       - name: Download dist/ GH workflow artifacts
         uses: actions/download-artifact@v4

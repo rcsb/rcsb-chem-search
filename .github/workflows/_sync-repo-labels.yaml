@@ -9,7 +9,7 @@ on:
 
 jobs:
   sync-repo-labels:
-    runs-on: [self-hosted, buildchain]
+    runs-on: ubuntu-latest
     env:
       SETTINGS_PATH: .github/project.yaml
       # For historical reasons, the GH CLI uses GH_TOKEN instead of GITHUB_TOKEN

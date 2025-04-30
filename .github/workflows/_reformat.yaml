@@ -15,7 +15,7 @@ jobs:
   reformat:
     name: Reformat and auto-fix modified files
     if: ${{ github.event_name == 'pull_request' || inputs.all-files == true }}
-    runs-on: [self-hosted, buildchain]
+    runs-on: ubuntu-latest
     env:
       # For historical reasons, the GH CLI uses GH_TOKEN instead of GITHUB_TOKEN
       # https://github.com/github/docs/issues/21930

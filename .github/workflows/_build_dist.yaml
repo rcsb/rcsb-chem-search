@@ -21,7 +21,7 @@ env:
 
 jobs:
   build-dist:
-    runs-on: [self-hosted, buildchain]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:

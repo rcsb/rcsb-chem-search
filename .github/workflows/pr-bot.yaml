@@ -45,6 +45,13 @@ jobs:
       cancel-in-progress: true
     uses: ./.github/workflows/_check-docker.yaml
 
+  check-docs:
+    if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/please-check-docs') }}
+    concurrency:
+      group: check-docs-${{ github.ref_name }}
+      cancel-in-progress: true
+    uses: ./.github/workflows/_check-docs.yaml
+
   upgrade:
     if: ${{ github.event.issue.pull_request && contains(github.event.comment.body, '/please-upgrade') }}
     concurrency:
