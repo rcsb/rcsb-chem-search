@@ -42,6 +42,12 @@ class _FrozenList[T](Sequence[T]):
             return self.__items == list(other)
         return NotImplemented
 
+    def __repr__(self) -> str:
+        return repr(self.__items)
+
+    def __str__(self) -> str:
+        return str(self.__items)
+
 
 class UrlDict(TypedDict):
     """URLs for this project, per [PyPi Project Metadata](https://docs.pypi.org/project_metadata/)."""
@@ -97,9 +103,9 @@ __about__: About = About(
     # ::tyranno:: summary="$<<project.summary>>",
     summary="Backend REST API supporting chemical similarity searches on RCSB PDB chemical components.",
     # ::tyranno:: authors=${project.authors[*].name},
-    authors=["Douglas Myers-Turnbull"],
+    authors=_FrozenList("Douglas Myers-Turnbull"),
     # ::tyranno:: maintainers=_FrozenList($<<project.maintainers[*].name>>),
-    maintainers=_FrozenList(["Douglas Myers-Turnbull"]),
+    maintainers=_FrozenList("Douglas Myers-Turnbull"),
     # ::tyranno:: name=${project.keywords|unpack(@)},
     keywords=_FrozenList("cheminformatics", "search", "rcsb", "pdb"),
     # ::tyranno:: license="$<<project.license.text>>",

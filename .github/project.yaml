@@ -9,110 +9,107 @@
 # Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
 
 # A short description of the repository that will show up on GitHub
-# ::tyranno:: description: $<<project.description>>
+# ::tyranno:: description: $<<project.description.yaml(@)>>
 description: Backend REST API supporting chemical similarity searches on RCSB PDB chemical components.
-# ::tyranno:: homepage: $<<project.urls.Homepage>>
+# ::tyranno:: homepage: $<<project.urls.Homepage.yaml(@)>>
 homepage: https://github.com/rcsb/rcsb-chem-search
 # ::tyranno:: topics: $<<project.keywords>>
 topics:
-  # :tyranno-start: $<<project.keywords[*].unquote(@)|yaml_long(@)>>
+  # :tyranno start: $<<project.keywords|yaml(@)>>
   - cheminformatics
   - search
   - rcsb
   - pdb
-  # ::tyranno-end::
+  # ::tyranno end::
 
 labels:
-  - name: "breaking"
-    description: "💥 Breaking change"
+  - name: breaking
+    description: 💥 Breaking change
     color: "#000000"
   - name: "changelog: exclude"
-    description: "🔕 Always omit from the changelog"
+    description: 🔕 Always omit from the changelog
     color: "#f2e9e9"
   - name: "changelog: include"
-    description: "🔔 Always include in the changelog"
+    description: 🔔 Always include in the changelog
     color: "#f9e6e6"
-  - name: "effort: 1-easy"
-    description: "1️⃣ Easy (t < 1 hr)"
-    color: "#50b0ff"
-  - name: "effort: 2-moderate"
-    description: "2️⃣ Moderate (1 hr ≤ t < 4 hr)"
-    color: "#90e0fff"
-  - name: "effort: 3-hard"
-    description: "3️⃣️ Hard (≥ 4 hours)"
-    color: "#8670ff"
-  - name: "effort: multipart"
-    description: "#️⃣ Organizes multiple sub-issues"
-    color: "#c050ff"
-  - name: "help needed"
-    description: "👋 Help needed"
+  - name: help needed
+    description: 👋 Help needed
     color: "#50ff50"
   - name: "priority: 1-low"
-    description: "🟩 Does not block release/milestone and can be done at any time"
+    description: 🟩 Does not block release/milestone and can be done at any time
     color: "#99dd00"
-  - name: " priority: 2-medium"
-    description: "🟨 Does not block release/milestone but should be prioritized"
+  - name: "priority: 2-medium"
+    description: 🟨 Does not block release/milestone but should be prioritized
     color: "#d0cc11"
   - name: "priority: 3-high"
-    description: "🟧 Stalls work on the project or its dependents"
+    description: 🟧 Stalls work on the project or its dependents
     color: "#e09911"
   - name: "priority: 4-critical"
-    description: "🟥 Must be fixed ASAP"
+    description: 🟥 Must be fixed ASAP
     color: "#f06600"
-  - name: "question"
-    description: "💬 Question or discussion (issues only)"
+  - name: question
+    description: 💬 Question or discussion (issues only)
     color: "#8800ff"
-  - name: "state: awaiting triage"
-    description: "🚦 Awaiting triage"
-    color: "#f0f0f0"
   - name: "state: blocked"
-    description: "🚧 Blocked by another issue"
+    description: 🚧 Blocked by another issue
     color: "#e0e0e0"
   - name: "state: needs details"
-    description: "🏷️ Needs more details before work can begin"
+    description: 🏷️ Needs more details before work can begin
     color: "#f0f0f0"
   - name: "state: ready for dev"
-    description: "🏁 Ready for work"
+    description: 🏁 Ready for work
     color: "#e0e0e0"
   - name: "state: rejected"
-    description: "✖️ Will not be worked on"
+    description: ✖️ Will not be worked on
     color: "#ffffff"
   - name: "type: build"
-    description: "🔧 Change to the build system or external dependencies"
+    description: 🔧 Change to the build system or external dependencies
     color: "#90e0ff"
   - name: "type: cicd"
-    description: "⚙️ Change to continuous integration and deployment (CI/CD)"
+    description: ⚙️ Change to continuous integration and deployment (CI/CD)
     color: "#90e0ff"
   - name: "type: docs"
-    description: "📝 Change to documentation only"
+    description: 📝 Change to documentation only
     color: "#90e0ff"
   - name: "type: deprecation"
-    description: "🗑️ Deprecation of a feature or component"
+    description: 🗑️ Deprecation of a feature or component
     color: "#90e0ff"
   - name: "type: drop"
-    description: "❌ Removal of a feature"
+    description: ❌ Removal of a feature
     color: "#90e0ff"
   - name: "type: feature"
-    description: "✨ Addition or modification of a feature"
+    description: ✨ Addition or modification of a feature
     color: "#90e0ff"
   - name: "type: fix"
-    description: "🐛 Bug fix, excluding security vulnerabilities"
+    description: 🐛 Bug fix, excluding security vulnerabilities
     color: "#90e0ff"
   - name: "type: performance"
-    description: "⚡️ Code change that improves performance"
+    description: ⚡️ Code change that improves performance
     color: "#90e0ff"
   - name: "type: refactor"
-    description: "♻️ Modify code without affecting execution/behavior"
+    description: ♻️ Modify code without affecting execution/behavior
     color: "#90e0ff"
   - name: "type: security"
-    description: "🔒️ Vulnerability fix/mitigation or hardening"
+    description: 🔒️ Vulnerability fix/mitigation or hardening
     color: "#90e0ff"
   - name: "type: style"
-    description: "🎨 Code change that does not affect the meaning of the code"
+    description: 🎨 Code change that does not affect the meaning of the code
     color: "#90e0ff"
   - name: "type: test"
-    description: "🚨 Addition or modification of tests"
+    description: 🚨 Addition or modification of tests
     color: "#90e0ff"
-  - name: "scope: docker"
-    description: "“🐬 Docker"
+  - name: "scope: api"
+    description: 📡 API
+    color: "#009000"
+  - name: "scope: chemistry"
+    description: 🧬 Chemistry
+    color: "#009000"
+  - name: "scope: dev-infra"
+    description: 🛠️ Development infrastructure
+    color: "#009000"
+  - name: "scope: docs-infra"
+    description: 🛠️ Documentation infrastructure
+    color: "#009000"
+  - name: "scope: etl"
+    description: 🚛 ETL
     color: "#009000"

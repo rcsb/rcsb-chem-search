@@ -1,0 +1,91 @@
+# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
+# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
+# SPDX-License-Identifier: Apache-2.0
+#
+# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
+# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
+# SPDX-License-Identifier: BSD-3-Clause
+#
+# Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
+
+name: deploy-packages
+run-name: >
+  ${{ github.workflow }}
+  :: ${{ github.event_name }}
+  :: ${{ github.ref_type }}:${{ github.ref_name }}
+
+on:
+  push:
+    tags:
+      - '^v\d+\.\d+\.\d+(-(alpha|beta|preview|rc)\d+)?$' # Match most semver-compatible PEP 440.
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+  attestations: write
+
+jobs:
+  tag-latest:
+    # This job syncs tags 'v<x>', where <x> is its major version
+    runs-on:
+      - self-hosted
+      - ubuntu-22.04
+    steps:
+      - uses: Actions-R-Us/actions-tagger@v2
+
+  build-dist:
+    runs-on:
+      - self-hosted
+      - buildchain
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - name: Build project
+        run: |
+          uv build
+      - name: Upload dist/ artifacts (wheels and sdists) as GH workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          compression-level: 0 # they're already gzip-compressed
+          retention-days: 1 # no need to retain longer
+
+  github-release:
+    runs-on:
+      - self-hosted
+      - buildchain
+    needs: build-dist
+    steps:
+      - name: Download dist/ GH workflow artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - name: Publish to GitHub Releases
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          token: ${{ secrets.github_token }}
+          files: dist/*
+      - name: Print info
+        run: |
+          printf "Published release: %s\n" '${{ steps.release.outputs.url }}'
+
+  publish-to-harbor:
+    name: Publish to Harbor
+    # https://github.com/rcsb/devops-cicd-github-actions/blob/master/.github/workflows/workflow-docker.yaml
+    uses: rcsb/devops-cicd-github-actions/.github/workflows/workflow-docker.yaml@master
+    with:
+      repo_project: ${{ github.repository_owner }}
+      docker_image_name: ${{ github.event.repository.name }}
+      mainline_branch: ${{ github.ref_name }} # Tag name

@@ -63,26 +63,26 @@ clean: && trash
 # Delete temporary project files and directories.
 [group('project'), private]
 @trash:
-  - rm .coverage.json
-  - rm -r .ruff_cache/
-  - rm -r .hypothesis/
-  - rm -r **/__pycache__/
-  - rm -r **/.pytest_cache/
-  - rm -r **/cython_debug/
-  - rm -r **/*.egg-info/
-  - rm **/*.py[codi]
+  - rm -f .coverage.json
+  - rm -rf .ruff_cache/
+  - rm -rf .hypothesis/
+  - rm -rf **/__pycache__/
+  - rm -rf **/.pytest_cache/
+  - rm -rf **/cython_debug/
+  - rm -rf **/*.egg-info/
+  - rm -f **/*.py[codi]
 
 # Delete files whose names indicate they're temporary.
 [group('project'), private]
 @trash-unsafe:
-  - rm **/.DS_Store
-  - rm **/Thumbs.db
-  - rm **/*.tmp
-  - rm **/*.temp
-  - rm **/*.swp
-  - rm **/.#*
-  - rm **/*[~\$]
-  - rm **/*.directory
+  - rm -f **/.DS_Store
+  - rm -f **/Thumbs.db
+  - rm -f **/*.tmp
+  - rm -f **/*.temp
+  - rm -f **/*.swp
+  - rm -f **/.#*
+  - rm -f **/*[~\$]
+  - rm -f **/*.directory
 
 ###################################################################################################
 
@@ -125,24 +125,18 @@ _fix *args:
   - uv run pre-commit run ruff-fix {{args}}
 
 _fix_ruff *args:
-  - uv run ruff check --fix-only --show-fixes --statistics --output-format grouped {{args}}
+  - uv run ruff check --fix-only --show-fixes --output-format grouped {{args}}
 
 ###################################################################################################
 
 # Check Ruff and Pyright rules (via pre-commit).
 [group('check')]
-check: check-ruff check-deal check-pyright check-links
+check: check-ruff check-pyright check-links
 
 # Check Ruff rules without auto-fix.
 [group('check')]
 check-ruff *args:
-  uv run ruff check --no-fix --statistics --output-format grouped {{args}}
-  check-deal
-
-# Check Deal lint rules.
-[group('check'), private]
-check-deal *args:
-  uv run python -m deal lint {{args}}
+  uv run ruff check --no-fix --output-format grouped {{args}}
 
 # Check Ruff Bandit-derived 'S' rules.
 [group('check')]
@@ -276,34 +270,6 @@ ruff *args:
 [group('alias')]
 pytest *args:
   uv run --locked pytest {{args}}
-
-# `uv run --locked hypothesis fuzz`.
-[group('alias')]
-fuzz *args:
-  uv run --locked hypothesis fuzz {{args}}
-
-# `uv run --locked hypothesis codemod`.
-[group('alias')]
-codemod *args:
-  uv run --locked hypothesis codemod {{args}}
-
-# `uv run --locked hypothesis write`.
-[group('alias')]
-write-test *args:
-  just _write_test {{args}}
-
-# Private alias just so `="--help"` isn't shown in help.
-_write_test *args="--help":
-  uv run --locked --module hypothesis write {{args}}
-
-# `uv run --locked --module deal`.
-[group('alias')]
-deal *args:
-  just _deal {{args}}
-
-# Private alias just so `="--help"` isn't shown in help.
-_deal *args="--help":
-  uv run --locked --module deal {{args}}
 
 # `gh pr create --fill-verbose --web --draft`.
 [group('alias')]
