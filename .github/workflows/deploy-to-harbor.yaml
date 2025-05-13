@@ -1,40 +1,31 @@
-# SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
-# SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
-# SPDX-License-Identifier: Apache-2.0
-#
-# SPDX-FileCopyrightText: Copyright 2024, Contributors to rcsb-chem-search
-# SPDX-PackageHomePage: https://github.com/rcsb/rcsb-chem-search
-# SPDX-License-Identifier: BSD-3-Clause
-#
-# Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
-
-name: deploy-packages
-run-name: >
+name: deploy-to-harbor
+run-name: >-
   ${{ github.workflow }}
   :: ${{ github.event_name }}
   :: ${{ github.ref_type }}:${{ github.ref_name }}
 
 on:
   push:
-    tags:
-      - '^v\d+\.\d+\.\d+(-(a|b|alpha|beta|preview|rc)\.\d+)?$' # Match most semver-compatible PEP 440.
+    tags: # Match most semver-compatible PEP 440.
+      - '^v\d+\.\d+\.\d+(-(a|b|alpha|beta|rc)\.\d+)?$'
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.sha }}
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 permissions:
   contents: write
   id-token: write
-  packages: write
-  attestations: write
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
   tag-latest:
-    # This job syncs tags 'v<x>', where <x> is its major version
     runs-on:
       - self-hosted
-      - ubuntu-22.04
+      - ubuntu-24.04
     steps:
       - uses: Actions-R-Us/actions-tagger@v2
 
@@ -42,15 +33,16 @@ jobs:
     runs-on:
       - self-hosted
       - buildchain
+    env:
+      UV_NO_SYNC: true
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.13"
-          enable-cache: true
       - name: Build project
         run: |
-          uv build
+          uv build --no-sources
       - name: Upload dist/ artifacts (wheels and sdists) as GH workflow artifacts
         uses: actions/upload-artifact@v4
         with:
