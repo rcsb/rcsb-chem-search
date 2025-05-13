@@ -17,7 +17,7 @@ run-name: >
 on:
   push:
     tags:
-      - '^v\d+\.\d+\.\d+(-(alpha|beta|preview|rc)\d+)?$' # Match most semver-compatible PEP 440.
+      - '^v\d+\.\d+\.\d+(-(a|b|alpha|beta|preview|rc)\.\d+)?$' # Match most semver-compatible PEP 440.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.sha }}
