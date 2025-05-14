@@ -6,8 +6,8 @@ run-name: >-
 
 on:
   push:
-    tags: # Match most semver-compatible PEP 440.
-      - '^v\d+\.\d+\.\d+(-(a|b|alpha|beta|rc)\.\d+)?$'
+    tags:
+      - "v*.*.*"
 
 concurrency:
   group: ${{ github.workflow }}
@@ -22,7 +22,39 @@ defaults:
     shell: bash
 
 jobs:
+  check-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      is-match: ${{ steps.match.outputs.match }} # 'false' is coerced to false.
+    steps:
+      - id: match
+        run: |
+          # ::tyranno:: regex_1='^refs/tags/$<<~.cicd.tag.release-trigger>>$'
+          regex_1='^v[0-9]+\.[0-9]+\.[0-9]+$'
+          # ::tyranno:: regex_2='^refs/tags/$<<~.cicd.tag.prerelease-trigger>>$'
+          regex_2='^v[0-9]+\.[0-9]+\.[0-9]+-((alpha|beta|rc)\.)?\d+$'
+          if [[ "$GITHUB_REF" =~ $regex_1 ]]; then
+            printf "Accepting %s for real release.\n" "$GITHUB_REF_NAME"
+            echo "match=true" >> $GITHUB_OUTPUT
+          elif [[ "$GITHUB_REF" =~ $regex_2 ]]; then
+            printf "Accepting %s for preview/test release only.\n" "$GITHUB_REF_NAME"
+            echo "match=true" >> $GITHUB_OUTPUT
+          else
+            echo "match=false" >> $GITHUB_OUTPUT
+          fi
+
+  guard:
+    # Allows dependent tasks to use `needs: guard` without checking `is-match`.
+    if: ${{ needs.check-tag.outputs.is-match }}
+    needs: check-tag
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          printf "Proceeding.\n"
+
   tag-latest:
+    needs: guard
+    name: Update pointer tags
     runs-on:
       - self-hosted
       - ubuntu-24.04
@@ -30,6 +62,8 @@ jobs:
       - uses: Actions-R-Us/actions-tagger@v2
 
   build-dist:
+    needs: guard
+    name: Build sdists and wheels
     runs-on:
       - self-hosted
       - buildchain
@@ -52,6 +86,7 @@ jobs:
           retention-days: 1 # no need to retain longer
 
   github-release:
+    name: Release on GitHub
     runs-on:
       - self-hosted
       - buildchain
@@ -74,6 +109,7 @@ jobs:
           printf "Published release: %s\n" '${{ steps.release.outputs.url }}'
 
   publish-to-harbor:
+    needs: guard
     name: Publish to Harbor
     # https://github.com/rcsb/devops-cicd-github-actions/blob/master/.github/workflows/workflow-docker.yaml
     uses: rcsb/devops-cicd-github-actions/.github/workflows/workflow-docker.yaml@master
