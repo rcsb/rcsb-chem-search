@@ -122,7 +122,6 @@ CMD [ \
 # Ubuntu's `curl` doesn't support `--http3` yet, but HTTP/2 will be fine.
 # (`--http2-prior-knowledge` initiates an HTTP/2 request without a prior HTTP/1.1 request.)
 HEALTHCHECK \
-  --start-interval=5s \
-  --start-period=30s \
+  --start-period=120s \
   --timeout=10s \
   CMD curl --fail --http2-prior-knowledge http://localhost/ || exit 1
