@@ -1,7 +1,6 @@
 """
 Exceptions for rcsbchemsearch.
 """
-# ruff: noqa: TC001, TC003  # This noqa shouldn't be needed
 
 from __future__ import annotations
 
@@ -61,6 +60,8 @@ class MoleculeOperationError(AnyChemError):
 
 @dataclass(frozen=True, slots=True)
 class MoleculeBuildError(AnyChemError):
+    """An error building a molecule from SMILES or InChI."""
+
     input_str: str
     detail: str = ""
 
@@ -70,7 +71,7 @@ class MoleculeBuildError(AnyChemError):
 
 
 class _ErrorUtils:
-    """"""
+    """Utilities for handling rdkit errors."""
 
     def is_rdkit_error(self, exception: Exception) -> bool:
         """
@@ -161,8 +162,10 @@ class _ErrorUtils:
 
 ErrorUtils = _ErrorUtils()
 
+
 def inner():
     raise AnyAppError()
+
 
 def outer():
     try:
@@ -171,15 +174,15 @@ def outer():
         raise AnyAppError()
 
 
-
 import sysconfig
 
 
 def run():
     pkgs_dir = Path(sysconfig.get_paths()["purelib"]).resolve(strict=True)
     print(pkgs_dir)
-    import inspect
     import importlib.util
+    import inspect
+
     spec = importlib.util.find_spec("rdkit")
     pkg_dir = Path(spec.origin).resolve(strict=True).parent.relative_to(pkgs_dir)
     pkg_mod = importlib.util.module_from_spec(spec)
@@ -188,13 +191,13 @@ def run():
     try:
         inner()
     except Exception as exception:
-
         mod: ModuleType = inspect.getmodule(exception)
         summary: StackSummary = traceback.extract_tb(exception.__traceback__)
         for frame in summary:
             path = Path(frame.filename).resolve(strict=True)
             if path.is_relative_to(pkg_dir):
                 print(f"Is <{path}> in <{pkg_dir}>?")
-            #print(frame.filename, frame)
+            # print(frame.filename, frame)
+
 
 run()

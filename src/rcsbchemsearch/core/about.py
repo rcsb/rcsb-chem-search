@@ -29,7 +29,7 @@ class _FrozenList[T](Sequence[T]):
     def __getitem__(self, index: int | slice) -> T | Sequence[T]:
         return self.__items[index]
 
-    def __len__(self):
+    def __len__(self) -> None:
         return len(self.__items)
 
     def __hash__(self) -> int:
