@@ -14,6 +14,7 @@ ARG PYTHON_VERSION="3.13"
 # Start the stage "builder", and download uv.
 FROM python:$PYTHON_VERSION-alpine$ALPINE_VERSION AS builder
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# hadlint ignore=DL3018
 RUN apk add --no-cache bash
 SHELL ["/bin/bash", "-c"]
 
