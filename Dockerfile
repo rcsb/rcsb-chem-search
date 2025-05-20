@@ -104,18 +104,14 @@ ENV N_WORKERS=$N_WORKERS
 ENV LOG_LEVEL=$LOG_LEVEL
 ENV BACKLOG_SIZE=$BACKLOG_SIZE
 
-# Note: Across multiple lines, you still need `\`, even though it's inside `[]`.
-# ::tyranno:: ENTRYPOINT ["/var/app/.venv/bin/hypercorn", "$<<~.namespace>>"]
-ENTRYPOINT ["/var/app/.venv/bin/hypercorn", "chemsearch.api:app"]
-CMD [ \
-  "--bind", "[::]:80", \
-  "--bind", "[::]:443", \
-  "--quic-bind", "[::]:443", \
-  "--log-file", "-", \
-  "--log-level", "$LOG_LEVEL", \
-  "--workers", "$N_WORKERS", \
-  "--backlog", "$BACKLOG_SIZE" \
-  ]
+CMD exec /var/app/.venv/bin/hypercorn chemsearch.server:api \
+  --bind '[::]:80' \
+  --bind '[::]:443' \
+  --quic-bind '[::]:443' \
+  --log-file - \
+  --log-level $LOG_LEVEL \
+  --workers $N_WORKERS \
+  --backlog $BACKLOG_SIZE
 
 # Declare a container healthcheck, which Docker Compose (used in CI) will use.
 # We *could* instead define it in `compose.yaml`, but there's no downside to keeping it here.

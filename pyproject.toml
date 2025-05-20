@@ -18,7 +18,7 @@ requires = ["hatchling>=1.27"]
 
 [project]
 name = "rcsb-chem-search"
-version = "0.0.1-a.0"
+version = "0.0.1-alpha.0"
 requires-python = "~=3.13"
 readme = { file = "README.md", content-type = "text/markdown" }
 description = "Backend REST API supporting chemical similarity searches on RCSB PDB chemical components."
@@ -55,21 +55,9 @@ dependencies = [
   "rdkit>=2024.9.5", # When updating, check for breaking changes.
   "rfc9457>=0.3",
   "tzdata>=2025.2; platform_system == 'Windows'",
-]
-
-[project.optional-dependencies]
-perf = [
   "starlette-compress>=1.5",
   "zstd>=1.5.6",
 ]
-etl = [
-  "typer-slim>=0.15",
-]
-
-# -------------------------- scripts --------------------------------------
-[project.scripts]
-# ::tyranno:: $<<project.name>> = "$<<project.name>>.__main__:cli"
-chem-search-etl = "rcsbchemsearch.__main__:cli"
 
 # -------------------------- project URIs -------------------------------------
 [project.urls]
@@ -101,7 +89,7 @@ dev = [
   "pyright[nodejs]>=1.1.400",
   "pytest>=8.3",
   "pytest-cov>=6.1",
-  "ruff>=0.11.8",
+  "ruff>=0.11.10",
 ]
 test = [
   "coverage[toml]>=7.8",
@@ -113,9 +101,9 @@ test = [
 check = [
   "pre-commit>=4.2",
   "pyright[nodejs]>=1.1.400",
-  "ruff>=0.11.8",
+  "ruff>=0.11.10",
 ]
-ruff = ["ruff>=0.11.8"]
+ruff = ["ruff>=0.11.10"]
 precommit = ["pre-commit>=4.2"]
 
 #
