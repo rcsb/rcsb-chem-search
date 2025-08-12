@@ -13,7 +13,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from traceback import StackSummary
 from types import ModuleType
-from typing import Concatenate as Ct
+from typing import Concatenate as Ct, NoReturn
 
 from rcsbchemsearch.core import StructureData
 from rcsbchemsearch.core.json_utils import JsonObject
@@ -161,43 +161,3 @@ class _ErrorUtils:
 
 
 ErrorUtils = _ErrorUtils()
-
-
-def inner():
-    raise AnyAppError()
-
-
-def outer():
-    try:
-        inner()
-    except AnyAppError:
-        raise AnyAppError()
-
-
-import sysconfig
-
-
-def run():
-    pkgs_dir = Path(sysconfig.get_paths()["purelib"]).resolve(strict=True)
-    print(pkgs_dir)
-    import importlib.util
-    import inspect
-
-    spec = importlib.util.find_spec("rdkit")
-    pkg_dir = Path(spec.origin).resolve(strict=True).parent.relative_to(pkgs_dir)
-    pkg_mod = importlib.util.module_from_spec(spec)
-    print(spec)
-    print(pkg_dir)
-    try:
-        inner()
-    except Exception as exception:
-        mod: ModuleType = inspect.getmodule(exception)
-        summary: StackSummary = traceback.extract_tb(exception.__traceback__)
-        for frame in summary:
-            path = Path(frame.filename).resolve(strict=True)
-            if path.is_relative_to(pkg_dir):
-                print(f"Is <{path}> in <{pkg_dir}>?")
-            # print(frame.filename, frame)
-
-
-run()

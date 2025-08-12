@@ -8,49 +8,56 @@
 
 # Modified from Tyrannosaurus <https://github.com/dmyersturnbull/tyrannosaurus>.
 
-"""
-Project metadata for use inside and outside `rcsb-chem-search`.
+"""Project metadata.
+
+This is a separate module so that it's easy to import.
+For example, `mypkg/app.py` may want to write `"{__about__.name} (version v{__about__.version})"`,
+while your `mypkg/__init__.py` includes lines like `from mypkg.app import Entry` for its public API.
+(This would break if `mypkg.app` tried to `from mypkg import __about__`.)
 """
 
 from collections.abc import Sequence
-from typing import NotRequired, ReadOnly, TypedDict, overload
+from typing import Final, NamedTuple, NotRequired, ReadOnly, Self, TypedDict, overload
+
+__all__ = ["About", "UrlDict", "VersionParts", "__about__"]
 
 
 class _FrozenList[T](Sequence[T]):
     def __init__(self, *items: T) -> None:
+        super().__init__()
         self.__items = list(items)
 
     @overload
     def __getitem__(self, index: int) -> T: ...
 
     @overload
-    def __getitem__(self, index: slice) -> Sequence[T]: ...
+    def __getitem__(self, index: slice) -> Self: ...
 
-    def __getitem__(self, index: int | slice) -> T | Sequence[T]:
-        return self.__items[index]
+    def __getitem__(self, index: int | slice) -> T | Self:
+        result = self.__items[index]
+        return type(self)(result) if isinstance(index, slice) else result
 
-    def __len__(self) -> None:
+    def __len__(self) -> int:
         return len(self.__items)
 
     def __hash__(self) -> int:
         return hash(tuple(self.__items))
 
-    def __eq__(self, other: Sequence[T]) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, _FrozenList):
             return self.__items == other.__items
-        if isinstance(other, Sequence):
-            return self.__items == list(other)
         return NotImplemented
-
-    def __repr__(self) -> str:
-        return repr(self.__items)
 
     def __str__(self) -> str:
         return str(self.__items)
 
 
 class UrlDict(TypedDict):
-    """URLs for this project, per [PyPi Project Metadata](https://docs.pypi.org/project_metadata/)."""
+    """URLs for this project, [per PyPi](https://docs.pypi.org/project_metadata/).
+
+    Names are from the `name` column, lowercased.
+    `homepage`, `changelog`, and `source` are required.
+    """
 
     homepage: ReadOnly[str]
     changelog: ReadOnly[str]
@@ -61,18 +68,39 @@ class UrlDict(TypedDict):
     funding: NotRequired[ReadOnly[str]]
 
 
-class About(TypedDict):
+class VersionParts(NamedTuple):
+    """Major, minor, patch, and pre per semver.
+
+    This project's versions conform to both PyPa (i.e. PEP 440) and SemVer rules.
+    `pre` will normally be empty or `('alpha'|'beta'|'rc', nonnegative-int)`.
     """
-    Metadata about this package.
+
+    major: int
+    minor: int
+    patch: int
+    pre: tuple[str | int, ...]
+
+    @property
+    def minor_version(self) -> str:
+        return f"{self.major}.{self.minor}"
+
+    @property
+    def patch_version(self) -> str:
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+
+class About(TypedDict):
+    """Metadata about this package.
 
     Attributes:
         namespace: name of the directory containing this module.
         name: pyproject `project.name`                   / importlib `Name`    .
         version: pyproject `project.version`             / importlib `version`.
+        version_parts: (parsed `version`)
         summary: pyproject `project.description`         / importlib `Summary`.
         license: pyproject `project.license.text`        / importlib `License`;
           an SPDX ID such as `Apache-2.0`.
-        authors: pyproject `project.authors[*].name`      / importlib `Author` split by ` and `;
+        authors: pyproject `project.authors[*].name`     / importlib `Author` split by ` and `;
           e.g. `["Kerri Kerrigan", "Adam Addison"]`.
         maintainers: pyproject `project.authors[*].name` / importlib `Author` split by ` and `;
           e.g. `["Kerri Kerrigan", "Adam Addison"]`.
@@ -85,7 +113,9 @@ class About(TypedDict):
 
     name: ReadOnly[str]
     namespace: ReadOnly[str]
+    vendor: ReadOnly[str]
     version: ReadOnly[str]
+    version_parts: ReadOnly[VersionParts]
     summary: ReadOnly[str]
     license: ReadOnly[str]
     authors: ReadOnly[Sequence[str]]
@@ -94,19 +124,25 @@ class About(TypedDict):
     urls: ReadOnly[UrlDict]
 
 
-__about__: About = About(
+
+__about__: Final = About(
+    # ::tyranno:: name="$<<~.namespace>>",
     namespace="rcsbchemsearch",
+    # ::tyranno:: name="$<<~.vendor>>",
+    vendor="rcsb",
     # ::tyranno:: name="$<<project.name>>",
     name="rcsb-chem-search",
     # ::tyranno:: version="$<<project.version>>",
     version="0.0.1-alpha.0",
+    # ::tyranno:: version="$<<project.version.semver(@).py_tuple(@)>>",
+    version_parts=VersionParts(0, 0, 1, ("alpha", 0)),
     # ::tyranno:: summary="$<<project.summary>>",
-    summary="Backend REST API supporting chemical similarity searches on RCSB PDB chemical components.",
-    # ::tyranno:: authors=${project.authors[*].name},
+    summary="Backend REST API for chemical component cheminformatics searches.",
+    # ::tyranno:: authors=$<<project.authors[*].name>>,
     authors=_FrozenList("Douglas Myers-Turnbull"),
-    # ::tyranno:: maintainers=_FrozenList($<<project.maintainers[*].name>>),
+    # ::tyranno:: maintainers=$<<project.maintainers[*].name>>,
     maintainers=_FrozenList("Douglas Myers-Turnbull"),
-    # ::tyranno:: name=${project.keywords|unpack(@)},
+    # ::tyranno:: name=$<<project.keywords>>,
     keywords=_FrozenList("cheminformatics", "search", "rcsb", "pdb"),
     # ::tyranno:: license="$<<project.license.text>>",
     license="BSD-3-Clause",
@@ -117,11 +153,14 @@ __about__: About = About(
         source="https://github.com/rcsb/rcsb-chem-search",
         # ::tyranno:: documentation="$<<project.urls.Documentation>>",
         documentation="https://github.com/rcsb/rcsb-chem-search",
-        # ::tyranno:: changelog="${project.urls.Release Notes}",
+        # ::tyranno:: changelog="$<<project.urls."Release Notes">>",
         changelog="https://github.com/rcsb/rcsb-chem-search/releases",
         # ::tyranno:: download="$<<project.urls.Download>>",
-        download="https://pypi.org/rcsb/rcsb-chem-search/",
+        download="https://pypi.org/project/rcsb/rcsb-chem-search/",
         # ::tyranno:: bug="$<<project.urls.Tracker>>",
-        bug="https://github.com/rcsb/rcsb-chem-search/issues",
+        bug="https://github.com/dmyersturnbull/rcsb/rcsb-chem-search/issues",
     ),
 )
+
+if __name__ == "__main__":
+    print(__about__)  # noqa: T201
