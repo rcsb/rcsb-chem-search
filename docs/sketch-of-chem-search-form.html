@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search Form Mockup</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .form-container {
+            width: 650px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        textarea, select, input[type="checkbox"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        textarea {
+            font-size: 14px;
+            width: 100%;
+        }
+        select {
+            width: 120px;
+        }
+        .form-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .form-row .form-group {
+            flex: 1;
+            margin-right: 10px;
+        }
+        .form-row .form-group:last-child {
+            margin-right: 0;
+        }
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-group label {
+            margin-left: 5px;
+            font-weight: normal;
+        }
+        .buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .buttons button {
+            padding: 5px 10px;
+            border-width: 2px;
+            border-style: solid;
+            border-color: black;
+            cursor: pointer;
+            background-color: white;
+            color: black;
+            font-weight: bold;
+        }
+        .buttons button:disabled {
+            background-color: #ccc;
+        }
+        .help-icon {
+            margin-left: 5px;
+            font-size: 12px;
+            padding: 2px;
+            cursor: pointer;
+            position: relative;
+            font-weight: bold;
+            border: 1px solid #ddd;
+            background-color: #ddd;
+            border-radius: 6px;
+            display: inline-block;
+        }
+        .tooltip {
+            visibility: hidden;
+            font-weight: normal;
+            font-size: 12px;
+            width: 200px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 5px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%; /* Position the tooltip above the icon */
+            left: 50%;
+            margin-left: -100px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .help-icon .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: #555 transparent transparent transparent;
+        }
+        .help-icon:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .toggle-container {
+            display: flex;
+            align-items: center;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #007bff;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+    <script>
+        function toggleStereoisomers() {
+            var stereoisomersCheckbox = document.getElementById('stereoisomers');
+            var ezIsomersCheckbox = document.getElementById('e/z-isomers');
+            // nothing
+        }
+        
+        function toggleMatchType() {
+            var queryType = document.getElementById('query-type').value;
+            var matchType = document.getElementById('match-type');
+            var textarea = document.getElementById('query');
+            if (queryType === 'formula') {
+                matchType.innerHTML = '<option value="na">N/A</option>';
+                matchType.disabled = true;
+                textarea.placeholder = "e.g. 'C6O6H12' or 'C>=6 O>=6 .*'";
+            } else {
+                matchType.innerHTML = `
+                    <option value="exact">Exact structure</option>
+                    <option value="substructures">Substructure</option>
+                    <optgroup label="Fingerprint methods">
+                        <option value="fingerprint:ecfp-2">ECFP-2</option>
+                        <option value="fingerprint:ecfp-3">ECFP-3</option>
+                        <option value="fingerprint:ecfp-4">ECFP-4</option>
+                        <option value="fingerprint:pubchem">PubChem</option>
+                        <option value="fingerprint:getaway">Getaway</option>
+                        <option value="fingerprint:estate">EState</option>
+                        <option value="fingerprint:mhfp">MinHashed (MHFP)</option>
+                        <option value="fingerprint:laggner">Laggner</option>
+                    </optgroup>
+                `;
+                matchType.disabled = false;
+                textarea.placeholder = 'SMILES/InChI (or InChIKey/ligand-id)';
+            }
+        }
+    </script>
+</head>
+<body>
+    <div class="form-container">
+        <div class="form-group">
+            <label for="query">Query</label>
+            <textarea id="query" rows="4" placeholder="e.g. 'C6O6H12' or 'C>=6 O>=6 .*"></textarea>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="query-type">Query Type</label>
+                <select id="query-type" onchange="toggleMatchType()">
+                    <option value="formula">Formula</option>
+                    <option value="structure">Structure</option>
+                </select>
+            </div>
+            <div id="match-type-group" class="form-group">
+                <label for="match-type">Match Type</label>
+                <select id="match-type" disabled="true">
+                    <option value="na">N/A</option>
+                </select>
+                <span class="help-icon">?
+                    <span class="tooltip">...</span>
+                </span>
+            </div>
+            <div class="form-group">
+                <label>Consider significant:</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="stereoisomers">
+                    <label for="stereoisomers">stereoisomers</label>
+                    <span class="help-icon">?
+                        <span class="tooltip">...</span>
+                    </span>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="e/z isomers" onclick="toggleStereoisomers()">
+                    <label for="e/z isomers">e/z isomers</label>
+                    <span class="help-icon">?
+                        <span class="tooltip">...</span>
+                    </span>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="hydrogens">
+                    <label for="hydrogens">hydrogens</label>
+                    <span class="help-icon">?
+                        <span class="tooltip">...</span>
+                    </span>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="isotopes">
+                    <label for="isotopes">isotopes</label>
+                    <span class="help-icon">?
+                        <span class="tooltip">...</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="return">Return</label>
+                <div style="display: flex; align-items: center;">
+                    <select id="return">
+                        <option value="structures">Structures</option>
+                        <option value="properties">Properties</option>
+                    </select>
+                    <span class="help-icon">?
+                        <span class="tooltip">Select what you want to return: structures or properties.</span>
+                    </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="grouped-by">Grouped by</label>
+                <div style="display: flex; align-items: center;">
+                    <select id="grouped-by">
+                        <option value="no-grouping">No Grouping</option>
+                        <option value="category">Category</option>
+                    </select>
+                    <span class="help-icon">?
+                        <span class="tooltip">Choose how the results should be grouped.</span>
+                    </span>
+                </div>
+            </div>
+            <div class="form-group">
+                <div style="display: flex; align-items: center">
+                    <label for="include-csm">Include CSMs</label>
+                    <div class="toggle-container" style="margin-left: 10px;">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="include-csms">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <span class="help-icon">?
+                        <span class="tooltip">Toggle to include computed structure models in the results.</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="buttons">
+            <button type="button">Count</button>
+            <button type="button">Clear</button>
+            <button type="button" style="background-color: #007bff; color: white; border-color: #007bff;">🔍 Search</button>
+        </div>
+    </div>
+</body>
+</html>

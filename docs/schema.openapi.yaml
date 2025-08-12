@@ -1,0 +1,387 @@
+openapi: 3.1.0
+
+info:
+  title: Chemical Similarity Search API
+  version: 0.0.1
+  description: An API for performing chemical similarity and substructure searches.
+
+#
+#########################################################################################
+#                                       Paths
+#########################################################################################
+paths:
+  /search:
+    get:
+      summary: Run a chemical search
+      description: Searches for and returns related structures.
+      parameters:
+        - $ref: '#/components/parameters/type'
+        - $ref: '#/components/parameters/query'
+        - $ref: '#/components/parameters/formula'
+        - $ref: '#/components/parameters/use'
+        - $ref: '#/components/parameters/metric'
+        - $ref: '#/components/parameters/cutoff-percent'
+      responses:
+        '200':
+          $ref: '#/components/responses/ok'
+        '400':
+          $ref: '#/components/responses/invalid-query'
+        '422':
+          $ref: '#/components/responses/unprocessable-query'
+
+#----
+#----
+#----
+#----
+components:
+
+  #
+  #########################################################################################
+  #                                    Responses
+  #########################################################################################
+  responses:
+
+    #============================================
+    #          Response -- success
+    #============================================
+    ok:
+      description: Search completed.
+      content:
+        application/json:
+          schema: '#/components/schemas/success'
+
+    #============================================
+    #           Response -- invalid
+    #============================================
+    invalid-query:
+      description: |
+        Bad request ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) Problem Details).
+        Sent if `type` is invalid, `cutoff-percent` is not a number, etc.
+        Front-end clients receiving these responses should treat them as internal failures.
+        These should be corrected; i.e. by adding rudimentary input validation.
+        (422 Unprocessable Query responses indicate user errors.)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/problem-details'
+
+    #============================================
+    #         Response -- unprocessable
+    #============================================
+    unprocessable-query:
+      description: |
+        Invalid query syntax ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) Problem Details).
+        Sent if `query` could not be read as SMILES, InChI, InChI Key, or SMARTS (if `type` is `smarts`);
+        or if `formula` could not be parsed.
+        Although rare, sometimes RDKit cannot process a valid query, in which case this response will be sent.
+        Front-end clients can generally treat these as user errors.
+        (However, these parameters are easily validated with regex, so clients could disallow the requests.)
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/unprocessable-query'
+
+    #============================================
+    #         Response -- server error
+    #============================================
+    server-error:
+      description: |
+        Internal Server Error ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457.html) Problem Details).
+        This can be sent in response to an unexpected algorithmic failure (e.g. an RDKit error)
+        or for a more general, internal error.
+        In the latter case, `title` will be `Internal Server Error` and `detail` will be an empty string.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/problem-details'
+
+  #
+  #########################################################################################
+  #                                    Parameters
+  #########################################################################################
+  parameters:
+
+    #============================================
+    #           Parameter -- type
+    #============================================
+    type:
+      name: type
+      in: path
+      schema:
+        $ref: '#/components/schemas/type'
+      description: |
+        The type of search to perform.
+
+        - `fingerprint:*`: Finds similar compounds using the specified fingerprint algorithm.
+          Also see `metric` and `cutoff-percentage`.
+        - `substructure`: Finds substructures of the query.
+        - `superstructure`: Finds superstructures of the query.
+        - `equivalent`: Finds equivalent compounds (identical `use` parameter.
+        - `smarts`: Finds structures that contain the query
+          [SMARTS](https://en.wikipedia.org/wiki/SMILES_arbitrary_target_specification) pattern.
+
+        Notes:
+          - In graph searches, `fingerprint:morgan` is first used to filter structures with <80% similarity.
+
+        <b>Fingerprint types:</b>
+          - `rdkit`: [RDKit-specific fingerprints](https://www.rdkit.org/docs/RDKit_Book.html#rdkit-fingerprints).
+          - `morgan`: TODO
+          - `e3fp`: [Extended 3-Dimensional FingerPrint](https://dx.doi.org/10.1021/ci100050t).
+            Refer to the [e3fp repository](https://github.com/keiserlab/e3fp) for further information.
+            [ETKDG](https://doi.org/10.1021/acs.jcim.5b00654) is used to generate 3-dimensional coordinates.
+            *This is currently the only search type that uses 3-dimensional information.*
+          - `topological-torsion`: TODO
+          - `formula`: A 32-bit vector, where each bit is (N
+
+    #============================================
+    #           Parameter -- query
+    #============================================
+    query:
+      name: query
+      in: query
+      allowReserved: true
+      schema:
+        $ref: '#/components/schemas/query'
+      examples:
+        - 'CC(=O)OC1=CC=CC=C1C(=O)O'
+        - 'InChI=1S/C8H10O2/c1-6(9)8-4-2-3-5-7(8)10/h2-5H,1H3'
+        - 'BSYNRYMUTXBXSQ-UHFFFAOYSA-N'
+        - '[CH3][C](=[O])[OH]'
+      description: |
+        The query structure (SMILES, InChI, InChI Key, or SMARTS).
+        - SMILES: any standard or nonstandard SMILES.
+        - InChI: any standard or nonstandard InChI.
+        - InChI Key: InChI Key (a hash), limited to PDB ligands in the target set.
+        - SMARTS: A SMARTS query; only valid for the SMARTS search type.
+
+    #============================================
+    #             Parameter -- use
+    #============================================
+    use:
+      name: use
+      in: query
+      style: simple
+      schema:
+        $ref: '#/components/schemas/use'
+      default: 'optical,cis-trans,tautomer,protonation,hydrogen,isotope'
+      examples:
+        - 'optical,tautomer,isotope'
+      description: |
+        Optional information to be included in calculations.
+
+        - `optical`: treats enantiomers and diastereomers as different.
+        - `cis-trans`: treats cis–trans isomers as different.
+        - `tautomer`: treats tautomers as different.
+        - `protonation`: includes differences in protonation state.
+        - `hydrogen`: includes hydrogens.
+          Without this option, all hydrogen atoms are removed before comparison
+          **Note:** This is not the same as implicit/explicit modeling of hydrogens, which is always ignored.
+        - `isotope`: treats isotopes as different.
+
+        Structures are always standardized/canonicalized so that resonance forms are considered identical
+        and all hydrogens are modeled explicitly.
+
+        In exact and graph searches, all options are available and meaningful.
+        In fingerprint searches, some options have no effect, depending on the fingerprint algorithm.
+        The following table summarizes the available options.
+        With algorithms that use coordinates (Atom Pair, Pharmacophore, and E3FP),
+        coordinates are required and are calculated and used automatically.
+
+        | search type    | stereo | tautomer | proton | isotope | coords |
+        | -------------- | ------ | -------- | ------ | ------- | ------ |
+        | exact          | +      | +        | +      | +       |        |
+        | SMARTS         | +      | +        | +      | +       |        |
+        | graph          | +      | +        | +      | +       |        |
+        | RDKit          |        |          | ?      | ?       |        |
+        | Morgan         | +      | +        | ?      | ?       |        |
+        | Feat. Morgan   |        |          | ?      | ?       |        |
+        | Top. Torsion   | +      | +        | ?      |         |        |
+        | Pattern        |        | +        | ?      | ?       |        |
+        | ERG            |        |          | ?      | ?       |        |
+        | MHFP           | +      | +        | +      | ?       |        |
+        | SECFP          | +      | +        | +      | ?       |        |
+        | Atom Pair      | +      | +        | +      | ?       | 2D     |
+        | Pharmacophore  | +      | +        |        | ?       | 2D     |
+        | E3FP           | +      | +        | +      | +       | 3D     |
+
+    #============================================
+    #          Parameter -- formula
+    #============================================
+    formula:
+      name: formula
+      in: query
+      allowReserved: true
+      schema:
+        $ref: '#/components/schemas/formula'
+      examples:
+        - 'C6O6H12`
+        - 'C6 O6 H12`
+        - 'Na<=2 C<=6 O>=6 6<=H<=12'
+        - `C* O* H*`
+        - `C* O* H* .*`
+      description: |
+        Restricts results to structures with the provided chemical formula.
+        Two notation types are allowed:
+        - Element symbols followed by an optional count, with or without spaces.
+          Example: `C6O6H12`.
+        - Element symbols with optional bounded counts.
+          These forms are permitted: `H`, `H1`, `H<=1`, `H>=1`, `1<=H`, `1<=H<=2`, `H*`, and `.*`,
+          where `*` means 0 or more,
+          and `.*` means any number of unspecified atoms (excluding any elements the query includes explicitly).
+          Syntax elements (elements with optional counts) must be separated by spaces.
+
+
+    #============================================
+    #            Parameter -- metric
+    #============================================
+    metric:
+      name: query
+      in: query
+      schema:
+        $ref: '#/components/schemas/metric'
+      description: |
+        Distance metric for fingerprint similarity search.
+
+  #
+  #########################################################################################
+  #                                      Schemas
+  #########################################################################################
+  schemas:
+
+    #============================================
+    #            Schema -- success
+    #============================================
+    success:
+      type: object
+      additionalProperties: false
+      properties:
+        hits:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                type: string
+                pattern: '^.+$' # TODO
+              inchikey:
+                type: string
+                pattern: '^[A-Z]{14}-[A-Z]{10}-[A-Z0-9]$'
+              inchi:
+                type: string
+                pattern: '^InChI=1S/[^/]+(/[^/]+)*$'
+              smiles:
+                type: string
+                pattern: '^[BCNOFPSIbrcl@+\-\[\]=#\\\/().0-9]+$' # SMILES only
+
+    #============================================
+    #         Schema -- problem-details
+    #============================================
+    problem-details:
+      allOf:
+        - $ref: '#/components/schemas/error-type'
+        - type: object
+          required:
+            - detail
+          properties:
+            detail:
+              type: string
+            instance:
+              type: string
+              format: uri
+
+    #============================================
+    #       Schema -- unprocessable-query
+    #============================================
+    unprocessable-query:
+      allOf:
+        - $ref: '#/components/schemas/problem-details'
+        - type: object
+          properties:
+            type:
+              type: string
+              enum:
+                - smiles
+                - inchi
+                - inchikey
+                - unknown
+
+    #============================================
+    #           Schema -- error-type
+    #============================================
+    error-type:
+      type: object
+      required:
+        - status
+        - type
+        - title
+      properties:
+        type:
+          type: string
+          format: uri
+        status:
+          type: string
+          pattern: '^[45]\d{2}$'
+        title:
+          type: string
+          minLength: 2
+          maxLength: 100
+
+    #============================================
+    #              Schema -- query
+    #============================================
+    query:
+      anyOf:
+        - type: string
+          pattern: '^InChI=1S/[^/]+(/[^/]+)*$'
+        - type: string
+          pattern: '^[A-Z]{14}-[A-Z]{10}-[A-Z0-9]$'
+        - type: string
+          pattern: '^[BCNOFPSIbrcl@+\-\[\]=#\\\/().0-9$!&*;,:]+$' # SMARTS + SMILES
+
+    #============================================
+    #             Schema -- formula
+    #============================================
+    formula:
+      anyOf:
+        - type: string
+          pattern: '^( *[A-Z][a-z]?\d* *)+$'
+        - type: string
+          pattern: >
+            ^ *(
+              \d+<=([HBCNOFPSKYIWUV]|[A-Z][a-z])(<=\d+)?
+              |([HBCNOFPSKYIWUV]|[A-Z][a-z])(([<>]=)?\d+)?
+              |([HBCNOFPSKYIWUV.]|[A-Z][a-z])\*)
+            )
+            ( +
+              \d+<=([HBCNOFPSKYIWUV]|[A-Z][a-z])(<=\d+)?
+              |([HBCNOFPSKYIWUV]|[A-Z][a-z])(([<>]=)?\d+)?
+              |([HBCNOFPSKYIWUV.]|[A-Z][a-z])\*
+            )* *$
+
+    #============================================
+    #              Schema -- use
+    #============================================
+    use:
+      type: array
+      items:
+        type: string
+        enum:
+          - optical
+          - cis-trans
+          - tautomer
+          - protonation
+          - hydrogen
+          - isotope
+
+    #============================================
+    #             Schema -- metric
+    #============================================
+    metric:
+      type: string
+      default: dice
+      enum:
+        - dice
+        - hamming
+        - jaccard
+        - cosine

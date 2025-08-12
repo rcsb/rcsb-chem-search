@@ -2,18 +2,13 @@
 
 ### Bug reports, feature requests, and questions
 
-To report a bug or request a feature, or if you have any questions,
-either submit a [GitHub issue](https://github.com/rcsb/rcsb-chem-search/issues/new)
-or contact [RCSB support](https://www.rcsb.org/pages/contactus) by
-**emailing <a href="info@rcsb.org">info@rcsb.org</a>**.
-Please use the email to report issues with the live service at
-[rcsb.org](https://rcsb.org).
+To report a bug or request a feature, or to ask a question questions,
+[open a GitHub issue](https://github.com/rcsb/rcsb-chem-search/issues/new).
 
 ### Source code contributions
 
 Contributions are always welcome.
-Before writing any code, discuss the proposed changes with the developers by
-[creating a GitHub issue](https://github.com/rcsb/rcsb-chem-search/issues/new)
+Before writing any code, discuss the proposed changes with the developers by opening an Issue.
 
 Avoid making changes not related to the proposal so that your contributions are properly listed.
 Feel free to open a draft pull request (PR) at any time – even long before the changes are complete.
@@ -21,6 +16,7 @@ Feel free to open a draft pull request (PR) at any time – even long before the
 ### Recommended pull request workflow
 
 We recommend the following steps, which use
+[just](https://just.systems/),
 [uv](https://docs.astral.sh/uv/)
 and the
 [GitHub CLI](https://cli.github.com/).
@@ -31,7 +27,7 @@ and the
 #gh repo fork https://github.com/rcsb/rcsb-chem-search --default-branch-only --clone
 gh repo fork rcsb-chem-search --clone --default-branch-only
 cd rcsb-chem-search
-uv run pre-commit install
+just init
 ```
 
 <b>Using a branch (RCSB members):</b>
@@ -42,13 +38,13 @@ read -p "Branch name (e.g. fix/RO-1550--dmt or dev-dmt-): " branch
 gh repo clone rcsb-chem-search -- --single-branch
 git switch -c "$branch"
 cd rcsb-chem-search
-uv run pre-commit install
+just init
 ```
 
 Create a PR by running
 
 ```bash
-gh pr create --fill --web --draft
+just pr
 ```
 
 When you are ready, mark the PR as _ready for review_.
