@@ -1,322 +1,441 @@
 # SPDX-FileCopyrightText: Copyright 2020-2025, Contributors to Tyrannosaurus
 # SPDX-PackageHomePage: https://github.com/dmyersturnbull/tyrannosaurus
 # SPDX-License-Identifier: Apache-2.0
-
-# https://github.com/casey/just
+#
 # https://just.systems/man/en/
 # https://cheatography.com/linux-china/cheat-sheets/justfile/
+# CAUTION – Quotes aren't quotes.
+# This doesn't do what you'd expect:
+# ```
+# git +args:
+#   git {{args}}
+# commit-reformat: (git "-m" "style: reformat code")
+# ```
+# This results in `git -m style: reformat code` !
 
-set ignore-comments	:= true
+set dotenv-load := true
+set ignore-comments := true
+
+# Confusingly, Python has a default warning filter, which is **different** from `-W default`.
+
+export PYTHONWARNINGS := env('PYTHONWARNINGS', 'default')
+
+# Enable dev mode (https://docs.python.org/3/library/devmode.html):
+
+export PYTHONDEVMODE := env('PYTHONDEVMODE', '1')
+
+# To complain when `encoding=` is omitted (in addition to Ruff rule):
+# export PYTHONWARNDEFAULTENCODING := env('PYTHONWARNDEFAULTENCODING', '1')
+
+git_sha := `git rev-parse --short=16 HEAD`
+git_ref := `git rev-parse --abbrev-ref HEAD`
+git_rev_date := `git --no-pager log -1 --format=%cd`
 
 ###################################################################################################
 
 # List available recipes.
 [group('help')]
 list:
-  @just --list --unsorted
+    @just --list --unsorted --list-prefix "  "
+
 alias help := list
+
+# Print info for a bug report.
+[group('help')]
+info:
+    @echo "just_ver: {{ replace_regex(`just --version`, '^[^ ]+ ([^ ]+)$', '$1') }}"
+    @echo "uv_ver: {{ replace_regex(`uv --version`, '^uv ([^ ]+) .+$', '$1') }}"
+    @echo "git_ver: {{ replace_regex(`git --version`, '^git version ([^ ]+)$', '$1') }}"
+    @echo "os: {{ os() }}"
+    -@echo "os_ver: {{ `uname -r` }}"
+    @echo "cpu_arch: {{ arch() }}"
+    @echo "cpu_count: {{ num_cpus() }}"
+    @echo "shell: {{ env('SHELL', '?') }}"
+    @echo "lang: {{ env('LANG', '?') }}"
+    @echo "repo_dir: {{ file_name(justfile_directory()) }}"
+    @echo "project_name: {{ replace_regex(`uv version`, '^([^ ]+) .+$', '$1') }}"
+    @echo "project_ver: {{ `uv version --short` }}"
+    @echo "git_ref: {{ git_ref }}"
+    @echo "git_sha: {{ git_sha }}"
+    @echo "git_rev: {{ git_rev_date }}"
 
 ###################################################################################################
 
 # Sync the venv and install commit hooks.
 [group('setup')]
 init:
-  uv sync --all-extras --exact
-  uv run pre-commit install --install-hooks --overwrite
-  uv run pre-commit gc
+    -rm .git/hooks/*.sample
+    uv sync --all-extras --exact
+    uv run --no-sync pre-commit install --install-hooks --overwrite
+    uv run --no-sync pre-commit gc
+    uv run --no-sync pre-commit run
 
-# Update the lock file, sync the venv, auto-fix + format changes, and clean.
+###################################################################################################
+
+# `just update fix-changes format-changes clean`
 [group('project')]
-revamp: update fix-changes format-changes clean
+spruce: update fix-changes format-changes clean
 
-# Lock and sync the venv exactly with all extras.
-[group('project')]
-sync:
-  uv sync --all-extras --exact
-alias lock := sync
-
-# Update pre-commit hooks, update the lock file, and sync the venv.
+# `just update-lock update-hooks`
 [group('project')]
 update: update-lock update-hooks
+
 alias upgrade := update
 
 # Update the lock file and sync the venv.
 [group('project')]
-update-lock:
-  uv sync --upgrade --all-extras --exact
-  uv run pre-commit gc
+update-lock: sync
+    uv run pre-commit gc
+
 alias upgrade-lock := update-lock
 
 # Auto-update commit hooks.
 [group('project')]
 update-hooks:
-  uv run pre-commit autoupdate
-  uv run pre-commit gc
+    uv run --locked pre-commit autoupdate
+    uv run --no-sync pre-commit gc
+
 alias upgrade-hooks := update-hooks
 
-# This is an alternative to 'git gc':
-# Spawns incremental optimization tasks in background via 'git maintenance'.
-[group('project'), private]
-maintain-git:
-  git maintenance run \
-    --task=commit-graph \
-    --task=prefetch \
-    --task=loose-objects \
-    --task=incremental-repack \
-    --task=pack-refs
-
-# Minify the repo by deleting nearly all recreatable files (UNSAFE).
-[group('project'), private]
-strip-down-repo: clean (prune-git "1.hour") && delete-unsafe _pkg_idea
-  uv run pre-commit clean
-  uv run pre-commit uninstall
-  - rm -f -r .venv
-  - rm -f uv.lock
-
-# Package .idea (will fail if the directory does not exist).
+# Lock and sync the venv (uses all extras).
 [group('project')]
-_pkg_idea:
-  @tar -c -z -f idea.tar.gz .idea
-  @rm -r .idea/
-  @echo "Wrote idea.tar.gz"
+sync:
+    uv sync --all-extras --exact
 
-# Remove temporary files and most caches.
+alias lock := sync
+
+# Prune temp data, including from uv, pre-commit, and git.
 [group('project')]
-clean: && delete-trash
-  uv run pre-commit gc
-  uv cache prune
+clean: clean-temp clean-misc clean-git
 
-# Runs 'git gc --prune={prune}' and 'git remote prune --all'.
-[group('project'), private]
-prune-git prune='2.week':
-  # Needed on macOS (fails on others).
-  @- chflags -R nouchg .git/*
-  git gc --prune={{prune}}
-  git remote prune --all
+# Delete temp/cache files and directories. Called by `clean`.
+[group('project')]
+clean-temp:
+    # Generated docs:
+    -rm -f -r .site/
+    # Python temp files:
+    -rm -f -r .ruff_cache/
+    -rm -f -r .hypothesis/
+    -rm -f -r **/__pycache__/
+    -rm -f -r **/.pytest_cache/
+    -rm -f -r **/cython_debug/
+    -rm -f -r **/*.egg-info/
+    -rm -f -r **/.node-modules/
+    -rm -f .coverage.json
+    -rm -f **/*.py[codi]
+    # OS-specific files:
+    -rm -f **/.directory
+    -rm -f **/.DS_Store
+    -rm -f **/.localized
+    -rm -f **/Thumbs.db
 
-# Delete temporary project files and directories.
-[group('project'), private]
-delete-trash:
-  - rm -f -r .ruff_cache/
-  - rm -f -r .hypothesis/
-  - rm -f -r **/__pycache__/
-  - rm -f -r **/.pytest_cache/
-  - rm -f -r **/cython_debug/
-  - rm -f -r **/*.egg-info/
-  - rm -f -r **/.node-modules/
-  - rm -f -r .site/
-  - rm -f .coverage.json
-  - rm -f **/*.py[codi]
-  # Use `-` for the rare case that neither Linux nor macOS nor Windows applies.
-  @- just _trash_os_specific
+# Delete unused uv and pre-commit cache data.
+[group('project')]
+clean-misc:
+    uv run --no-sync pre-commit gc
+    uv cache prune
 
-[group('project'), linux]
-_trash_os_specific:
-  - rm -f **/.directory
+# Run ultra-safe 'git maintenance' tasks. Called by `clean`.
+[group('project')]
+[no-exit-message]
+clean-git:
+    # The repo is small, so use `pack-refs` instead of `incremental-repack`.
+    git maintenance run \
+      --task=prefetch \
+      --task=commit-graph \
+      --task=loose-objects \
+      --task=pack-refs
 
-[group('project'), macos]
-_trash_os_specific:
-  - rm -f **/.DS_Store
-  - rm -f **/.localized
+# Prune stale tracking refs, reflog items, etc. Pack refs. ❗
+[group('project')]
+[metadata('advanced')]
+prune-git:
+    # Needed on macOS.
+    @-chflags -R nouchg .git/*
+    git remote prune --all
+    # Recover objects first to avoid deleting objects simply because they're unreachable.
+    git fsck --lost-found --tags
+    # `--task=gc` is NOT equivalent to `git gc`:
+    # It works safely with other tasks and respects `gc.pruneExpire`.
+    # I don't think `--task=pack-refs` is needed here, but it won't hurt.
+    # Also, I've assumed the tasks are run in order. (If they're not, no harm done.)
+    git maintenance run \
+      --task=prefetch \
+      --task=commit-graph \
+      --task=reflog-expire \
+      --task=rerere-gc \
+      --task=loose-objects \
+      --task=pack-refs \
+      --task=gc
 
-[group('project'), windows]
-_trash_os_specific:
-  - rm -f **/Thumbs.db
+# Delete files that are probably temporary. 🧨
+[group('project')]
+[metadata('advanced')]
+@delete-likely-temp:
+    # Log files
+    -rm -f **/*.log
+    -rm -f **/*.log.gz
+    -rm -f **/*.log.zst
+    # Files and directories ending in `.(bak|junk|temp|tmp|trash)`
+    -rm -f -r **/*.bak
+    -rm -f -r **/*.junk
+    -rm -f -r **/*.temp
+    -rm -f -r **/*.tmp
+    -rm -f -r **/*.trash
+    # Files and directories starting or ending with `~|#|$` or starting with `.~`.
+    -rm -f -r **/[~#\$]*
+    -rm -f -r **/*[~#\$]
+    -rm -f -r **/.~*
 
-# Delete files whose names indicate they're temporary (UNSAFE).
-[group('project'), private]
-@delete-unsafe:
-  - rm -f -r .trash
-  - rm -f *.log
-  - rm -f src/**/*.log
-  - rm -f tests/*.log
-  - rm -f **/*.pid
-  - rm -f **/*.tmp
-  - rm -f **/*.temp
-  - rm -f **/*.swp
-  - rm -f **/*.bak
-  - rm -f **/.#*
-  - rm -f **/*[~\$]
+# Minify the repo by deleting nearly all recreatable files. 🧨
+[group('project')]
+[metadata('advanced')]
+minify-repo: clean-temp clean-misc prune-git delete-likely-temp _dismantle
+
+# <Internal.>
+_dismantle:
+    uv run pre-commit clean
+    uv run pre-commit uninstall
+    -rm -f -r .venv
+    -rm -f -r .idea
+    -rm -f uv.lock
 
 ###################################################################################################
 
-# Format modified files (via pre-commit).
+# Format STAGED files (via pre-commit).
 [group('format')]
 format-changes: _format
+
 alias format := format-changes
 
 # Format ALL files (via pre-commit).
 [group('format')]
 format-all: (_format "--all-files")
 
+# <Internal.>
 _format *args:
-  - uv run pre-commit run end-of-file-fixer {{args}}
-  - uv run pre-commit run fix-byte-order-marker {{args}}
-  - uv run pre-commit run trailing-whitespace {{args}}
-  - uv run pre-commit run ruff-format {{args}}
-  - uv run pre-commit run prettier {{args}}
+    -uv run pre-commit run end-of-file-fixer {{ args }}
+    -uv run pre-commit run fix-byte-order-marker {{ args }}
+    -uv run pre-commit run trailing-whitespace {{ args }}
+    -uv run pre-commit run ruff-format {{ args }}
+    -uv run pre-commit run prettier {{ args }}
 
 ###################################################################################################
 
-# Fix configured Ruff rule violations in modified files (via pre-commit).
+# Run pre-commit auto-fix hooks on STAGED files.
 [group('fix')]
-fix-changes:
-  git add .pre-commit-config.yaml
-  - uv run pre-commit run ruff-check
+[no-exit-message]
+fix-changes: _stage_precommit (hook "ruff-check")
+
 alias fix := fix-changes
 
-# Fix configured Ruff rule violations in ALL files (via pre-commit).
+# Run pre-commit auto-fix hooks on ALL files. ⚠️
 [group('fix')]
-fix-all:
-  git add .pre-commit-config.yaml
-  - uv run pre-commit run ruff-check --all-files
+[no-exit-message]
+fix-all: _stage_precommit (hook "ruff-check --all-files")
 
-# Fix configured Ruff rule violations.
+# Apply Ruff auto-fixes. (Runs on all files by default.) ⚠️
 [group('fix')]
-fix-ruff *args: (_fix_ruff args)
+[no-exit-message]
+fix-ruff *args: (_ruff_fix args)
 
-# Fix Ruff rule violations, including preview, unsafe, and noqa-suppressed.
+# Preview Ruff auto-fixes. Runs on all files by default.
 [group('fix')]
-fix-ruff-unsafe *args: (_fix_ruff "--preview" "--unsafe-fixes" "--ignore-noqa" args)
+[no-exit-message]
+diff-ruff *args: (_ruff_fix "--diff" args)
 
-_fix_ruff *args:
-  - uv run ruff check --fix-only --show-fixes --output-format grouped {{args}}
+# <Internal.> (FYI: Use `--config` so users can still pass `--output-format`.)
+[no-exit-message]
+_ruff_fix *args: (ruff "check --fix-only --config 'output-format=\"grouped\"'" args)
+
+# <Internal.>
+[no-exit-message]
+_stage_precommit:
+    git add .pre-commit-config.yaml
 
 ###################################################################################################
+
+# `just check-simple check-ruff check-ty check-links` (slow)
+[group('check')]
+check-all: check-core check-ruff check-ty check-schemas check-links
 
 # Check basic rules (via pre-commit).
 [group('check')]
-check *args:
-  uv run pre-commit run check-filenames
-  uv run pre-commit run check-symlinks
-  uv run pre-commit run check-case-conflict
-  uv run pre-commit run check-illegal-windows-names
-  uv run pre-commit run check-shebang-scripts-are-executable
+check-core:
+    # Keep slower hooks lower in the list.
+    uv run --no-sync pre-commit run check-filenames
+    uv run --no-sync pre-commit run pathvalidate
+    uv run --no-sync pre-commit run check-symlinks
+    uv run --no-sync pre-commit run check-case-conflict
+    uv run --no-sync pre-commit run check-illegal-windows-names
+    uv run --no-sync pre-commit run check-shebang-scripts-are-executable
+    uv run --no-sync pre-commit run check-github-actions
+    uv run --no-sync pre-commit run check-github-workflows
+    uv run --no-sync pre-commit run check-compose-spec
+    uv run --no-sync pre-commit run forbid-new-submodules
+    uv run --no-sync pre-commit run trailing-whitespace
+    uv run --no-sync pre-commit run check-added-large-files
 
-# Check JSON and YAML files against known schemas (via pre-commit).
+# Check JSON schemas (via pre-commit).
 [group('check')]
-check-schemas *args:
-  uv run pre-commit run check-github-workflows
-  uv run pre-commit run check-compose-spec
+check-schemas:
+    uv run --no-sync pre-commit run check-github-actions
+    uv run --no-sync pre-commit run check-github-workflows
+    uv run --no-sync pre-commit run check-compose-spec
+    uv run --no-sync pre-commit run check-metaschema
 
-# Check Ruff rules without auto-fix.
+# Check Ruff rules (without auto-fixing).
 [group('check')]
-check-ruff *args:
-  uv run ruff check --no-fix --output-format grouped {{args}}
+[no-exit-message]
+check-ruff *args: (_ruff_check args)
 
-# Check Ruff Bandit-derived 'S' rules.
+# Show the number of violations per Ruff rule.
 [group('check')]
-check-bandit *args:
-  just check-ruff --select S {{args}}
+[no-exit-message]
+check-ruff-stats *args: (ruff "check --no-fix --statistics" args)
 
-# Check Pyright typing rules.
+# Check Ruff security (S) rules derived from Bandit.
 [group('check')]
-check-pyright *args:
-  uv run pyright {{args}}
-# Soon: https://github.com/astral-sh/ruff/issues/3893
+[no-exit-message]
+check-bandit *args: (_ruff_check "--select S" args)
 
-# Detect broken hyperlinks (via pre-commit).
+# Check Astral ty typing rules.
 [group('check')]
-check-links:
-  uv run pre-commit run markdown-link-check --hook-stage manual --all-files
+[no-exit-message]
+check-ty *args: (run "ty check" args)
+
+# Detect broken hyperlinks via pre-commit. (slow)
+[group('check')]
+[no-exit-message]
+check-links: (hook "markdown-link-check --hook-stage manual --all-files")
+
+# <Internal.> (FYI: Use `--config` so users can still pass `--output-format`.)
+[no-exit-message]
+_ruff_check *args: (ruff "check --no-fix --config 'output-format=\"grouped\"'" args)
 
 ###################################################################################################
 
-# Run PyTest tests (except 'ux' and 'e2e').
+# Run tests not marked ux.
 [group('test')]
-test *args:
-  uv run --locked pytest --no-cov -m "not (ux or e2e)" {{args}}
+[no-exit-message]
+test-non-ux *args: (pytest "-m 'not ux'" args)
 
-# Run PyTest tests not marked 'slow', 'net', 'ux', or 'e2e'.
+alias test := test-non-ux
+
+# Run tests marked ux for manual interaction or verification.
 [group('test')]
-test-main *args:
-  uv run --locked pytest -m "not (slow or net or ux or e2e)" {{args}}
+[no-exit-message]
+test-ux *args: (pytest "-m ux" args)
 
-# Run PyTest tests marked 'ux' (interaction or manual review).
+# Run tests not marked ux, e2e, slow, or net.
 [group('test')]
-test-ux *args:
-  uv run --locked pytest --no-cov -m ux {{args}}
+[no-exit-message]
+test-fast *args: (pytest "-m 'not (ux or e2e or slow or net)'" args)
 
-# Run PyTest tests marked 'property' with extra Hypothesis options.
+# Run doctest tests via PyTest.
 [group('test')]
-test-property *args:
-  uv run --locked pytest -m property --hypothesis-explain --hypothesis-show-statistics {{args}}
+[no-exit-message]
+test-doctest *args: (pytest "--doctest-modules src/" args)
 
-# Run all PyTest tests stepwise (starting at last failure).
+alias doctest := test-doctest
+
+# Run tests not marked ux, reporting coverage.
 [group('test')]
-test-stepwise *args:
-  uv run --locked pytest --no-cov {{args}}
+[no-exit-message]
+test-with-cov *args: (pytest "-m 'not ux' --cov" args)
 
-# Run all PyTest tests, highlighting test durations.
+alias test-cov := test-with-cov
+
+# Run PyTest tests, highlighting test durations. ☆
 [group('test')]
-test-durations *args:
-  uv run --locked pytest --no-cov --durations=0 --durations-min=0 {{args}}
+[no-exit-message]
+test-durations *args: (pytest "--durations=0 --durations-min=0" args)
 
-# Run doctest tests (via PyTest).
+# Run tests marked hypothesis with explain phase enabled. ☆
 [group('test')]
-doctest *args:
-  uv run --locked pytest --doctest-modules src/ {{args}}
+[no-exit-message]
+test-hypothesis *args: (pytest "-m hypothesis --hypothesis-explain" args)
 
-# Run all PyTest tests, showing minimal output.
-[group('test'), private]
-test-quietly *args:
-  uv run --locked pytest --no-cov --capture=no --tb=line {{args}}
+# Run PyTest tests stepwise, starting at last failure. ☆
+[group('test')]
+[no-exit-message]
+test-stepwise *args: (pytest "--stepwise" args)
 
-# Run all PyTest tests, showing tracebacks, locals, and INFO.
-[group('test'), private]
-test-loudly *args:
-  uv run --locked pytest --no-cov --showlocals --full-trace --log-level INFO {{args}}
+# Run PyTest tests, showing minimal output. ☆
+[group('test')]
+[no-exit-message]
+test-quietly *args: (pytest "--capture=no --tb=line --quiet" args)
 
-# Run all PyTest tests with pdb debugger.
-[group('test'), private]
-test-with-pdb *args:
-  uv run --locked pytest --no-cov --pdb {{args}}
+# Run PyTest tests, showing tracebacks, locals, and INFO. ☆
+[group('test')]
+[no-exit-message]
+test-loudly *args: (pytest "--showlocals --full-trace --log-level=INFO --verbose" args)
+
+# Run PyTest tests with pdb debugger. ☆
+[group('test')]
+[no-exit-message]
+test-with-pdb *args: (pytest "--pdb" args)
 
 ###################################################################################################
 
-# Build mkdocs docs from scratch, treating warnings as errors.
+# Build mkdocs docs from scratch, failing for warnings.
 [group('docs')]
-build-docs *args:
-  uv run --locked mkdocs build --clean --strict {{args}}
+[no-exit-message]
+build-docs *args: (run "mkdocs build --clean --strict" args)
 
 # Locally serve the mkdocs docs.
 [group('docs')]
-serve-docs *args:
-  uv run mkdocs serve {{args}}
+[no-exit-message]
+serve-docs *args: (run "mkdocs serve" args)
 
 ###################################################################################################
 
-# `uv run --locked`.
+# `uv`
 [group('alias')]
-run +args:
-  uv run --locked {{args}}
+[no-exit-message]
+[private]
+@uv *args:
+    uv {{ args }}
 
-# `uv run --locked python`.
+# `pre-commit`
 [group('alias')]
-python *args:
-  uv run --locked python {{args}}
+[no-exit-message]
+[private]
+@pre-commit *args: (run "pre-commit" args)
 
-# `uv run --locked pre-commit`.
+# `uv run --locked`
 [group('alias')]
-pre-commit *args:
-  uv run --locked pre-commit {{args}}
+[no-exit-message]
+@run +args:
+    uv run --locked {{ args }}
 
-# `uv run --locked pre-commit run {hook}`.
+# `uv run --locked python`
 [group('alias')]
-hook name *args:
-  uv run --locked pre-commit run name {{args}}
+[no-exit-message]
+@python *args: (run "python" args)
 
-# `uv run --locked ruff`.
+# `uv run --locked pre-commit run {hook}`
 [group('alias')]
-ruff *args:
-  uv run --locked ruff {{args}}
+[no-exit-message]
+@hook name *args: (run "pre-commit run" name args)
 
-# `uv run --locked pytest`.
+# `uv run --locked ruff`
 [group('alias')]
-pytest *args:
-  uv run --locked pytest {{args}}
+[no-exit-message]
+@ruff *args: (run "ruff" args)
 
-# `gh pr create --fill-verbose --web --draft`.
+# `uv run --locked ty`
 [group('alias')]
-pr *args:
-  gh pr create --fill-verbose --web --draft {{args}}
+[no-exit-message]
+@ty *args: (run "ty" args)
+
+# `uv run --locked pytest`
+[group('alias')]
+[no-exit-message]
+pytest *args: (run "pytest" args)
+
+# `gh pr create --fill-verbose`
+[group('alias')]
+[no-exit-message]
+pr *args="--web":
+    gh pr create --fill-verbose {{ args }}

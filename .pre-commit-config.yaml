@@ -4,11 +4,11 @@
 
 # Check out https://pre-commit.com/ for documentation
 # ::tyranno:: rev: v$<< "dependency-groups" .dev .pypa_ver_spec_map(@) ."pre-commit" .pypa_ver_spec_min(@) >>
-minimum_pre_commit_version: 4.2.0
+minimum_pre_commit_version: 4.3.0
 repos:
   # Standard hooks
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
         args:
@@ -21,6 +21,7 @@ repos:
           - --assume-in-merge # otherwise skipped in rebase
       - id: check-symlinks # ban *broken* symlinks
       - id: check-shebang-scripts-are-executable # ensures all shebangs are executable
+      - id: check-toml # because we currently don't auto-format TOML
       - id: end-of-file-fixer # auto-add final \n
       - id: fix-byte-order-marker # auto-remove BOMs
       - id: trailing-whitespace # auto-remove end-of-line whitespace
@@ -50,17 +51,19 @@ repos:
       - id: check-github-actions
       - id: check-github-workflows
       - id: check-compose-spec
+      - id: check-metaschema
+        files: \.schemas/.*\.(yaml|yml|json)$
 
   # UV lock and sync
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.7.21
+    rev: 0.8.9
     hooks:
       - id: uv-sync # first locks (without `--upgrade`)
 
   # Format and lint Python with Ruff
   - repo: https://github.com/astral-sh/ruff-pre-commit
     # ::tyranno:: rev: v$<< "dependency-groups" .dev .pypa_ver_spec_map(@) .ruff .pypa_ver_spec_max(@) >>
-    rev: v0.12.3
+    rev: v0.12.8
     hooks:
       - id: ruff-check
         args:
@@ -81,35 +84,27 @@ repos:
           - pre-commit
 
   # Format various formats with Prettier
-  # Don't update to 3.6 until this issue is fixed:
-  # https://github.com/JoC0de/pre-commit-prettier/issues/3
+  # IMPORTANT:
+  # Prettier or an enabled plugin must recognize the extension of every received file.
+  # Keep `additional_dependencies`, `args`, and the `files` regex synced.
+  # List only types that are used or are likely to be used.
+  # See official and community plugins: https://prettier.io/docs/plugins
+  # Note that some of the listed community plugins are extremely buggy.
+  # In particular, I recommend against prettier-plugin-sh, which often introduces syntax errors.
+  # All plugins in https://github.com/un-ts/prettier, including for toml, are also problematic.
   - repo: https://github.com/JoC0de/pre-commit-prettier
-    rev: v3.5.3 # !!! DO NOT UPDATE !!!
+    rev: v3.6.2
     hooks:
       - id: prettier
         additional_dependencies:
           # ::tyranno:: - prettier@$<<_ .up(@, 3) .rev .trim_left(@, 'v') >>
-          - prettier@3.5.3
-          - prettier-plugin-ini@1.3.0 # https://www.npmjs.com/package/prettier-plugin-ini
-          - prettier-plugin-toml@2.0.5 # https://www.npmjs.com/package/prettier-plugin-toml
-          - prettier-plugin-sh@0.17.4
+          - prettier@3.6.2
         args:
           - --experimental-ternaries # will be the default soon
           - --experimental-operator-position=start # might be made the default soon
-          - --plugin=prettier-plugin-ini
-          - --plugin=prettier-plugin-toml
-          - --plugin=prettier-plugin-sh # also covers .properties, Dockerfile, .gitignore, and more
-        # IMPORTANT: Sync this list with file types in this repo.
-        # It's ok to list unused suffixes, but Prettier or a plugin must understand them.
         # See: https://prettier.io/docs/en/plugins.html
-        # For Dockerfiles, we allow both `xyz.dockerfile` (as suggested in official docs)
-        # and `Dockerfile.xyz` (which is at least as common).
-        # WARNING: prettier-plugin-sh butchers Dockerfiles occasionally.
         files: >-
-          (?x)
-          \. (md|mdx|json|yaml|yml|toml|ini|cfg|properties|sh|ts|js|html|less|css|dockerfile) $
-          | ^ Dockerfile (\. [^.]*+)?+ $
-          | \. [^.]*ignore $
+          (?x) \. (md|mdx|json|graphql|yaml|yml|js|ts|jsx|html|less|css|toml) $
 
   - repo: https://github.com/tcort/markdown-link-check
     rev: v3.13.7
